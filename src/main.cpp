@@ -246,7 +246,8 @@ int main(int argc, char* argv[]) {
     auto adsb_page = std::make_unique<ADSBPage>(fb, sdr, adsb_ui, radar_ui);
     page_manager.registerPage(std::move(adsb_page));
 
-    std::cout << "Starting main loop with " << 2 << " pages..." << std::endl;
+    std::cout << "Starting main loop with " << page_manager.pageCount()
+              << " pages..." << std::endl;
 
     // Run main loop (PageManager handles everything)
     int exit_code = page_manager.run();

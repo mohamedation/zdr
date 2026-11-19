@@ -28,6 +28,9 @@ public:
      */
     void registerPage(std::unique_ptr<IPage> page);
 
+    /** Number of registered pages. */
+    size_t pageCount() const { return pages_.size(); }
+
     /**
      * Switch to a specific page by name
      * @param page_name Name of the page to switch to
