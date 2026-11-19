@@ -161,23 +161,23 @@ bool Framebuffer::saveScreenshot(const char* filename) {
         return false;
     }
 
-    // Allocate RGB888 buffer
-    uint8_t* rgb_data = new uint8_t[width * height * 3];
-
-    // Convert RGB565 to RGB888 (read from back buffer to capture last rendered frame)
+    // Convert RGB565 to RGB888 (read from back buffer to capture last rendered frame).
+    // Replicate top bits so full-scale channels expand to 0xFF, not 0xF8/0xFC.
+    std::vector<uint8_t> rgb_data(static_cast<size_t>(width) * height * 3);
     for (int i = 0; i < width * height; i++) {
-        uint16_t pixel = back_buffer_[i];
-
-        // Extract RGB565 components and expand to 8 bits
-        rgb_data[i * 3 + 0] = ((pixel >> 11) & 0x1F) << 3;  // R: 5 bits -> 8 bits
-        rgb_data[i * 3 + 1] = ((pixel >> 5) & 0x3F) << 2;   // G: 6 bits -> 8 bits
-        rgb_data[i * 3 + 2] = (pixel & 0x1F) << 3;          // B: 5 bits -> 8 bits
+        const uint16_t pixel = back_buffer_[i];
+        const uint8_t r5 = (pixel >> 11) & 31;
+        const uint8_t g6 = (pixel >> 5) & 63;
+        const uint8_t b5 = pixel & 31;
+        uint8_t* rgb = &rgb_data[static_cast<size_t>(i) * 3];
+        rgb[0] = static_cast<uint8_t>((r5 << 3) | (r5 >> 2));
+        rgb[1] = static_cast<uint8_t>((g6 << 2) | (g6 >> 4));
+        rgb[2] = static_cast<uint8_t>((b5 << 3) | (b5 >> 2));
     }
 
     // Write PNG file
-    int result = stbi_write_png(filename, width, height, 3, rgb_data, width * 3);
-
-    delete[] rgb_data;
+    int result = stbi_write_png(filename, width, height, 3, rgb_data.data(),
+                                width * 3);
 
     if (!result) {
         std::cerr << "Failed to write PNG file: " << filename << std::endl;
