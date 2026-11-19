@@ -1,9 +1,0 @@
-#ifndef VERSION_H
-#define VERSION_H
-
-#define ZDR_VERSION_MAJOR 0
-#define ZDR_VERSION_MINOR 3
-#define ZDR_VERSION_PATCH 7
-#define ZDR_VERSION_STRING "v0.3.8"
-
-#endif // VERSION_H

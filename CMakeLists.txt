@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(zDR VERSION 0.3.8 LANGUAGES C CXX)
+project(zDR VERSION 0.1.0 LANGUAGES C CXX)
 
 # Default to an optimized build. Without this, a plain `cmake ..` produces
 # an unoptimized binary that cannot keep up with real-time audio on the
@@ -123,9 +123,17 @@ set(SOURCES
 # Executable
 add_executable(zdr ${SOURCES})
 
+# Single source of truth for the binary version string (project() above).
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.h.in
+    ${CMAKE_BINARY_DIR}/generated/version.h
+    @ONLY
+)
+
 # Include directories
 target_include_directories(zdr PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_BINARY_DIR}/generated
 )
 
 # Link libraries
@@ -159,13 +167,13 @@ install(TARGETS zdr DESTINATION bin)
 set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGE_NAME "zdr")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-set(CPACK_PACKAGE_CONTACT "Weiming Feng <bestedwin@gmail.com>")
+set(CPACK_PACKAGE_CONTACT "mohamedation <mohamedation@gmail.com>")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lightweight SDR interface for Raspberry Pi")
 set(CPACK_PACKAGE_DESCRIPTION "A graphical SDR application optimized for small SPI displays on Raspberry Pi with audio demodulation")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "librtlsdr0, libasound2, libpulse0, libfreetype6, libc6")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
 set(CPACK_DEBIAN_PACKAGE_SECTION "hamradio")
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Weiming Feng <bestedwin@gmail.com>")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "mohamedation <mohamedation@gmail.com>")
 
 include(CPack)
