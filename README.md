@@ -1,15 +1,15 @@
-# zeroSDR
+# zDR
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20M5Stack-orange.svg)]()
 
 **English** | [简体中文](README.zh-CN.md)
 
-zeroSDR is an open source SDR receiver for Linux-based small-screen embedded
+zDR is an open source SDR receiver for Linux-based small-screen embedded
 systems. It renders the spectrum and waterfall straight into the framebuffer
 and demodulates FM / NFM / AM / USB / LSB audio through ALSA.
 
-![zeroSDR Interface](images/zerosdr.jpg)
+![zDR Interface](images/zerosdr.jpg)
 
 > **Press `H` on the SDR page to show the on-screen key list.**
 > Press `→` there to switch to the settings tab (FM de-emphasis, audio AGC,
@@ -49,7 +49,7 @@ and demodulates FM / NFM / AM / USB / LSB audio through ALSA.
 
 ## RTL-SDR V4 mount
 
-A 3D-printed mount designed by the zeroSDR author for the RTL-SDR Blog V4
+A 3D-printed mount designed by the zDR author for the RTL-SDR Blog V4
 dongle. It clamps the dongle to the back of the Cardputer Zero, so the receiver
 and the antenna connector travel as one unit; a short USB-C cable loops back to
 the device.
@@ -81,7 +81,7 @@ in real time on four small cores.
 
 ## Install on Cardputer Zero
 
-zeroSDR is in the Cardputer Zero AppStore: open the store, find **zeroSDR** and
+zDR is in the Cardputer Zero AppStore: open the store, find **zDR** and
 install it. On the device shell the same package is:
 
 ```bash
@@ -183,7 +183,7 @@ sudo chmod 755 /usr/share/APPLaunch/bin/run-zerosdr
 sudo install -d /usr/share/APPLaunch/applications
 sudo tee /usr/share/APPLaunch/applications/zerosdr.desktop >/dev/null <<'EOF'
 [Desktop Entry]
-Name=zeroSDR
+Name=zDR
 Comment=Lightweight SDR receiver
 Exec=bin/run-zerosdr
 Terminal=false
@@ -220,7 +220,7 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 systemctl --user restart APPLaunch.service
 ```
 
-Open **zeroSDR** from the launcher, then check:
+Open **zDR** from the launcher, then check:
 
 1. the spectrum/waterfall is moving,
 2. **press `H` — the key list appears; press `→` for settings**,
@@ -271,7 +271,7 @@ package pitfalls, recovery steps) see [cardputerzero.md](cardputerzero.md).
 
 ## First run
 
-On the first start zeroSDR shows a short guide (reopen it from
+On the first start zDR shows a short guide (reopen it from
 `H` → settings → `SHOW GUIDE`):
 
 - `H` opens the key list and settings
@@ -440,7 +440,7 @@ with an anti-aliased TrueType font.
 
 Some Cardputer Zero boards carry a BMI270 accelerometer and a BMM150
 magnetometer (the magnetometer is reached through the BMI270 auxiliary I²C
-bus). zeroSDR reads both through the kernel's IIO sysfs devices, so no extra
+bus). zDR reads both through the kernel's IIO sysfs devices, so no extra
 driver, daemon or permission is needed. When they are present the radar can be
 **heading-up**: the compass rose rotates so that the direction the top edge of
 the device points is at the top of the scope, and the aircraft blips (and the
@@ -598,7 +598,7 @@ amixer -c 1 sget Speaker
 ```
 
 On a minimal image the ALSA `default` route may be missing (the app then logs
-`Cannot open audio device default`). zeroSDR automatically falls back to
+`Cannot open audio device default`). zDR automatically falls back to
 `pulse` / `pipewire` / the codec device; install `libasound2-plugins` if none of
 them exist:
 
@@ -611,7 +611,7 @@ ES8389 amplifier to drop out.
 
 `Fn`+`D` / `Fn`+`S` adjust the **system** sink volume on every page. The
 launcher's labwc binding normally performs a 5% step; if the sink did not move
-within 300 ms, zeroSDR applies its own 10% step so the keys also work without
+within 300 ms, zDR applies its own 10% step so the keys also work without
 the launcher. The SDR status bar follows the sink (volume-up also unmutes),
 and the spectrum/ADSB pages show a short `VOL n%` popup. Bare `V` / `C` are
 not volume keys. If the launcher was left at a low volume, check it before
