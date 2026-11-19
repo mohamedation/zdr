@@ -288,9 +288,6 @@ system `/usr/share/applications` entry (the AppStore path policy only allows
 `usr/share/<package>/**` and `usr/share/APPLaunch/**`), and no `-dbgsym`
 package is generated.
 
-For a much more detailed Cardputer Zero walkthrough (audio, ADSB/readsb,
-package pitfalls, recovery steps) see [cardputerzero.md](cardputerzero.md).
-
 ## First run
 
 On the first start zDR shows a short guide (reopen it from
