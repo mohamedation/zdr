@@ -410,8 +410,8 @@ All settings live in one file:
     "stop_hz": 108000000
   },
   "adsb": {
-    "observer_latitude": 23.1211,
-    "observer_longitude": 113.236,
+    "observer_latitude": 0.0,
+    "observer_longitude": 0.0,
     "manual_override": true
   }
 }
