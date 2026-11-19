@@ -15,7 +15,7 @@ public:
 
     /**
      * Initialize the page (called once at startup)
-     * @return true if initialization suc false otherwise
+     * @return true if initialization succeeded, false otherwise
      */
     virtual bool init() = 0;
 
@@ -38,7 +38,7 @@ public:
 
     /**
      * Main update loop (called every frame while page is active)
-     * @param delta_time Time elapsed since lasin seconds)
+     * @param delta_time Time elapsed since last update (in seconds)
      */
     virtual void update(float delta_time) = 0;
 

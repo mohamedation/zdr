@@ -36,7 +36,8 @@ public:
 
     /**
      * Get path to aircraft.json file
-     * @return Full path to JSON output f  */
+     * @return Full path to JSON output file
+     */
     std::string getJSONPath() const;
 
 private:
