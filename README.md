@@ -684,6 +684,9 @@ scp build-aarch64/zdr pi@<cardputer-ip>:/tmp/
 This project is licensed under the GNU General Public License v3.0 — see the
 [LICENSE](LICENSE) file for details.
 
+The 8×16 bitmap font in [`src/font8x16.cpp`](src/font8x16.cpp) is taken from
+the Linux kernel (`lib/fonts/font_8x16.c`) and remains under GPL-2.0.
+
 The RTL-SDR V4 mount files in
 [`hardware/rtl-sdr-v4-mount/`](hardware/rtl-sdr-v4-mount/) are released under
 CC0 1.0, separately from the GPLv3 application code.

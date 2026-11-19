@@ -8,7 +8,8 @@
 // Each byte represents one row, bit 7 is leftmost pixel
 extern const uint8_t font6x8[95][8];
 
-// Terminus 8x16 bitmap font (ASCII 0x20-0x7E, 95 characters)
+// PC Screen Font 8x16 (ASCII 0x20-0x7E, 95 characters)
+// From Linux kernel lib/fonts/font_8x16.c (GPL-2.0). See src/font8x16.cpp.
 // Each character is 8 pixels wide, 16 pixels tall
 // Each byte represents one row, bit 7 is leftmost pixel
 extern const uint8_t font8x16[95][16];
