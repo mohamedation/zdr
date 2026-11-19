@@ -7,7 +7,7 @@
 
 class FFTProcessor {
 public:
-    FFTProcessor(size_t fft_size = 1024);
+    FFTProcessor(size_t fft_size = 512);
     ~FFTProcessor();
 
     // Process IQ samples and return magnitude spectrum

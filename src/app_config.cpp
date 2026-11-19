@@ -73,7 +73,7 @@ void AppConfig::setDefaults() {
     nlohmann::json& sdr = section("sdr");
     if (!sdr.contains("deemphasis_us")) sdr["deemphasis_us"] = 50;
     if (!sdr.contains("audio_agc")) sdr["audio_agc"] = true;
-    if (!sdr.contains("fft_size")) sdr["fft_size"] = 1024;
+    if (!sdr.contains("fft_size")) sdr["fft_size"] = 512;
     if (!sdr.contains("sample_rate")) sdr["sample_rate"] = 1024000;
     if (!sdr.contains("theme")) sdr["theme"] = 0;
 
@@ -105,7 +105,7 @@ void AppConfig::migrateLegacyFiles() {
     if (sdr.is_object()) {
         data_["sdr"]["deemphasis_us"] = sdr.value("deemphasis_us", 50);
         data_["sdr"]["audio_agc"] = sdr.value("audio_agc", true);
-        data_["sdr"]["fft_size"] = sdr.value("fft_size", 1024);
+        data_["sdr"]["fft_size"] = sdr.value("fft_size", 512);
         data_["sdr"]["sample_rate"] = sdr.value("sample_rate", 1024000);
         data_["sdr"]["theme"] = sdr.value("theme", 0);
         migrated = true;

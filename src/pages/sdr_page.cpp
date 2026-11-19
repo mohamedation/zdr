@@ -744,7 +744,7 @@ void SDRPage::loadSettings() {
     theme_index_ = sdr.value("theme", 0);
     if (theme_index_ < 0 || theme_index_ >= ui_.themeCount()) theme_index_ = 0;
 
-    const long long fft = sdr.value("fft_size", 1024);
+    const long long fft = sdr.value("fft_size", 512);
     for (int i = 0; i < num_fft_sizes_; ++i) {
         if (static_cast<long long>(fft_sizes_[i]) == fft) {
             fft_index_ = i;
