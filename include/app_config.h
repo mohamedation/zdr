@@ -32,7 +32,8 @@ public:
 private:
     AppConfig();
 
-    void setDefaults();
+    // Fill missing keys. Returns true if data_ was modified.
+    bool setDefaults();
     void migrateLegacyFiles();
 
     nlohmann::json data_ = nlohmann::json::object();

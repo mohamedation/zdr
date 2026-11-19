@@ -53,48 +53,63 @@ void AppConfig::load() {
         migrateLegacyFiles();
     }
 
-    setDefaults();
+    const bool added_defaults = setDefaults();
     std::cout << "AppConfig: " << (existed ? "loaded " : "created ")
               << path_ << std::endl;
-    save();
+    // Avoid rewriting the SD card on every launch; only persist when the file
+    // is new or missing keys were filled in (upgrade / first run / migration).
+    if (!existed || added_defaults) {
+        save();
+    }
 }
 
-void AppConfig::setDefaults() {
+bool AppConfig::setDefaults() {
+    bool changed = false;
+
     auto section = [&](const char* name) -> nlohmann::json& {
         if (!data_.contains(name) || !data_[name].is_object()) {
             data_[name] = nlohmann::json::object();
+            changed = true;
         }
         return data_[name];
     };
 
+    auto set_if_missing = [&](nlohmann::json& obj, const char* key,
+                              const nlohmann::json& value) {
+        if (!obj.contains(key)) {
+            obj[key] = value;
+            changed = true;
+        }
+    };
+
     nlohmann::json& system = section("system");
-    if (!system.contains("guide_show")) system["guide_show"] = true;
+    set_if_missing(system, "guide_show", true);
 
     nlohmann::json& sdr = section("sdr");
-    if (!sdr.contains("deemphasis_us")) sdr["deemphasis_us"] = 50;
-    if (!sdr.contains("audio_agc")) sdr["audio_agc"] = true;
-    if (!sdr.contains("fft_size")) sdr["fft_size"] = 512;
-    if (!sdr.contains("sample_rate")) sdr["sample_rate"] = 1024000;
-    if (!sdr.contains("theme")) sdr["theme"] = 0;
+    set_if_missing(sdr, "deemphasis_us", 50);
+    set_if_missing(sdr, "audio_agc", true);
+    set_if_missing(sdr, "fft_size", 512);
+    set_if_missing(sdr, "sample_rate", 1024000);
+    set_if_missing(sdr, "theme", 0);
 
     nlohmann::json& spectrum = section("spectrum");
-    if (!spectrum.contains("configured")) spectrum["configured"] = false;
-    if (!spectrum.contains("start_hz")) spectrum["start_hz"] = 88000000;
-    if (!spectrum.contains("stop_hz")) spectrum["stop_hz"] = 108000000;
-    if (!spectrum.contains("max_hold_decay_db_s")) {
-        spectrum["max_hold_decay_db_s"] = 1.5;
-    }
+    set_if_missing(spectrum, "configured", false);
+    set_if_missing(spectrum, "start_hz", 88000000);
+    set_if_missing(spectrum, "stop_hz", 108000000);
+    set_if_missing(spectrum, "max_hold_decay_db_s", 1.5);
 
     nlohmann::json& adsb = section("adsb");
-    if (!adsb.contains("observer_latitude")) adsb["observer_latitude"] = 0.0;
-    if (!adsb.contains("observer_longitude")) adsb["observer_longitude"] = 0.0;
-    if (!adsb.contains("manual_override")) adsb["manual_override"] = false;
+    set_if_missing(adsb, "observer_latitude", 0.0);
+    set_if_missing(adsb, "observer_longitude", 0.0);
+    set_if_missing(adsb, "manual_override", false);
 
     nlohmann::json& imu = section("imu");
-    if (!imu.contains("enabled")) imu["enabled"] = true;
-    if (!imu.contains("heading_up")) imu["heading_up"] = true;
-    if (!imu.contains("offset_deg")) imu["offset_deg"] = 0.0;
-    if (!imu.contains("invert")) imu["invert"] = false;
+    set_if_missing(imu, "enabled", true);
+    set_if_missing(imu, "heading_up", true);
+    set_if_missing(imu, "offset_deg", 0.0);
+    set_if_missing(imu, "invert", false);
+
+    return changed;
 }
 
 void AppConfig::migrateLegacyFiles() {
