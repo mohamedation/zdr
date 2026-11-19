@@ -6,7 +6,7 @@
 #include <string>
 
 // Single JSON configuration for the whole application:
-//   $HOME/.config/zerosdr/config.json
+//   $HOME/.config/zdr/config.json
 //
 // Sections:
 //   system   - guide_show

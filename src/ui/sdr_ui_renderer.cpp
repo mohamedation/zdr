@@ -506,7 +506,7 @@ void SDRUIRenderer::renderDialog(const char* title, const char* message, const c
 }
 
 void SDRUIRenderer::drawLogo(int x, int y) {
-    // "zeroSDR" logo with elegant large font (9x13 pixel characters, 3px spacing)
+    // "zDR" logo with elegant large font (9x13 pixel characters, 3px spacing)
     // Scaled up for better visibility
     // Color: subtle cyan-blue gradient
 
@@ -515,17 +515,17 @@ void SDRUIRenderer::drawLogo(int x, int y) {
     const uint16_t logo_color_dim    = 0x1C9F;  // Dim cyan #1C93FF
 
     // Character width: 9 pixels, height: 13 pixels, spacing: 3 pixels between chars
-    // "zeroSDR" = 7 characters
+    // "zDR" = 3 characters
     const int char_w = 9;
     const int char_h = 13;
     const int char_spacing = 3;
-    const int total_width = 7 * char_w + 6 * char_spacing;  // 81 pixels
+    const int total_width = 3 * char_w + 2 * char_spacing;  // 33 pixels
 
     // Center the logo horizontally
     int start_x = x + (320 - total_width) / 2;
     int start_y = y + 20;  // 20px from top of spectrum area for better centering
 
-    // Define 9x13 bitmap font for "zeroSDR" (larger, more elegant)
+    // Define 9x13 bitmap font for "zDR" (larger, more elegant)
     // Each character is represented as 13 rows, each row has 9 bits
     const uint16_t font_z[] = {
         0b111111111,
@@ -541,70 +541,6 @@ void SDRUIRenderer::drawLogo(int x, int y) {
         0b110000000,
         0b111111111,
         0b111111111
-    };
-
-    const uint16_t font_e[] = {
-        0b111111111,
-        0b111111111,
-        0b110000000,
-        0b110000000,
-        0b110000000,
-        0b111111110,
-        0b111111110,
-        0b110000000,
-        0b110000000,
-        0b110000000,
-        0b110000000,
-        0b111111111,
-        0b111111111
-    };
-
-    const uint16_t font_r[] = {
-        0b111111110,
-        0b111111111,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b111111110,
-        0b111111100,
-        0b110011000,
-        0b110001100,
-        0b110000110,
-        0b110000011,
-        0b110000011,
-        0b110000011
-    };
-
-    const uint16_t font_o[] = {
-        0b001111100,
-        0b011111110,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b110000011,
-        0b011111110,
-        0b001111100
-    };
-
-    const uint16_t font_S[] = {
-        0b011111111,
-        0b111111111,
-        0b110000000,
-        0b110000000,
-        0b110000000,
-        0b011111110,
-        0b001111111,
-        0b000000011,
-        0b000000011,
-        0b000000011,
-        0b000000011,
-        0b111111110,
-        0b111111100
     };
 
     const uint16_t font_D[] = {
@@ -639,10 +575,10 @@ void SDRUIRenderer::drawLogo(int x, int y) {
         0b110000011
     };
 
-    const uint16_t* chars[] = {font_z, font_e, font_r, font_o, font_S, font_D, font_R};
+    const uint16_t* chars[] = {font_z, font_D, font_R};
 
     // Draw each character
-    for (int ch = 0; ch < 7; ch++) {
+    for (int ch = 0; ch < 3; ch++) {
         int cx = start_x + ch * (char_w + char_spacing);
         const uint16_t* bitmap = chars[ch];
 

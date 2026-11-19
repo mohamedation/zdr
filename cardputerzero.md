@@ -1,6 +1,6 @@
-# zeroSDR 在 Cardputer Zero 真机部署指南
+# zDR 在 Cardputer Zero 真机部署指南
 
-本文说明如何把 zeroSDR 完整部署到 M5Stack Cardputer Zero 的 APPLaunch 中，包括：
+本文说明如何把 zDR 完整部署到 M5Stack Cardputer Zero 的 APPLaunch 中，包括：
 
 - AArch64 构建
 - APPLaunch 目录、启动脚本、桌面入口和图标
@@ -12,7 +12,7 @@
 
 > 测试环境：Cardputer Zero（CM0，AArch64，Debian 13，320×170 屏幕，ES8389，TCA8418 键盘）
 >
-> 项目：zeroSDR v0.3.8
+> 项目：zDR v0.3.8
 
 ---
 
@@ -23,13 +23,13 @@
 ```text
 /usr/share/APPLaunch/
 ├── applications/
-│   └── zerosdr.desktop
+│   └── zdr.desktop
 ├── bin/
-│   ├── zerosdr              # 实际可执行文件
-│   └── run-zerosdr          # 启动 wrapper
+│   ├── zdr              # 实际可执行文件
+│   └── run-zdr          # 启动 wrapper
 └── share/
     └── images/
-        └── zerosdr.png      # 图标
+        └── zdr.png      # 图标
 ```
 
 APPLaunch 扫描的是：
@@ -67,7 +67,7 @@ sudo apt-get install -y \
 
 - Debian 13 的 ALSA 运行时包是 `libasound2t64`；旧系统可能是 `libasound2`。
 - `alsa-utils` 提供 `amixer`，启动脚本会用它设置 DAC 音量。
-- `pipewire-alsa` 让 ALSA 的 `default` 设备走 PipeWire，zeroSDR 才能从扬声器出声。
+- `pipewire-alsa` 让 ALSA 的 `default` 设备走 PipeWire，zDR 才能从扬声器出声。
 
 > **已知系统坑：`pipewire-alsa` 可能升级 libcamera**
 >
@@ -78,7 +78,7 @@ sudo apt-get install -y \
 > undefined symbol: _ZN9libcamera10properties14PixelArraySizeE
 > ```
 >
-> 这不是 zeroSDR 的问题，但如果还要使用 Camera App，请阅读本文最后的
+> 这不是 zDR 的问题，但如果还要使用 Camera App，请阅读本文最后的
 > “Camera App 被 libcamera 升级破坏” 一节。
 
 ### 2.3 用户权限
@@ -125,12 +125,12 @@ sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
 ---
 
-## 3. 构建 zeroSDR
+## 3. 构建 zDR
 
 ### 3.1 在 Cardputer Zero 上原生构建
 
 ```bash
-cd ~/zerosdr
+cd ~/zdr
 mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -142,7 +142,7 @@ make -j"$(nproc)"
 检查二进制：
 
 ```bash
-file build/zerosdr
+file build/zdr
 ```
 
 应看到：
@@ -156,7 +156,7 @@ ELF 64-bit LSB pie executable, ARM aarch64
 如果 Pi 5 本身就是 AArch64，可以直接构建：
 
 ```bash
-cd ~/zerosdr
+cd ~/zdr
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 ```
@@ -164,12 +164,12 @@ cmake --build build -j"$(nproc)"
 然后复制到设备：
 
 ```bash
-scp build/zerosdr pi@<cardputer-ip>:/tmp/zerosdr
+scp build/zdr pi@<cardputer-ip>:/tmp/zdr
 ```
 
 ### 3.3 必须使用 Release
 
-zeroSDR 在 CM0 上要同时跑 FFT、解调、重采样和 UI。未优化的构建会导致音频线程跟不上，出现持续 underrun 和卡顿。
+zDR 在 CM0 上要同时跑 FFT、解调、重采样和 UI。未优化的构建会导致音频线程跟不上，出现持续 underrun 和卡顿。
 
 确认：
 
@@ -201,25 +201,25 @@ sudo install -d \
 ### 4.2 安装主程序
 
 ```bash
-sudo install -m 755 build/zerosdr \
-    /usr/share/APPLaunch/bin/zerosdr
+sudo install -m 755 build/zdr \
+    /usr/share/APPLaunch/bin/zdr
 ```
 
 ### 4.3 安装图标
 
 ```bash
-sudo install -m 644 share/images/zerosdr.png \
-    /usr/share/APPLaunch/share/images/zerosdr.png
+sudo install -m 644 share/images/zdr.png \
+    /usr/share/APPLaunch/share/images/zdr.png
 ```
 
 ### 4.4 创建启动 wrapper
 
 APPLaunch 的 `Terminal=false` 模式不会拆分参数，也不会经过 shell，所以不能直接在 `Exec` 里写 `-d /dev/fb_lcd` 之类的参数。必须使用 wrapper。
 
-创建 `/usr/share/APPLaunch/bin/run-zerosdr`：
+创建 `/usr/share/APPLaunch/bin/run-zdr`：
 
 ```bash
-sudo tee /usr/share/APPLaunch/bin/run-zerosdr >/dev/null <<'EOF'
+sudo tee /usr/share/APPLaunch/bin/run-zdr >/dev/null <<'EOF'
 #!/bin/sh
 set -eu
 
@@ -272,10 +272,10 @@ if [ -e "$KBD" ]; then
     set -- "$@" -k "$KBD"
 fi
 
-exec /usr/share/APPLaunch/bin/zerosdr "$@"
+exec /usr/share/APPLaunch/bin/zdr "$@"
 EOF
 
-sudo chmod 755 /usr/share/APPLaunch/bin/run-zerosdr
+sudo chmod 755 /usr/share/APPLaunch/bin/run-zdr
 ```
 
 关键点：
@@ -288,22 +288,22 @@ sudo chmod 755 /usr/share/APPLaunch/bin/run-zerosdr
 ### 4.5 创建 APPLaunch 桌面入口
 
 ```bash
-sudo tee /usr/share/APPLaunch/applications/zerosdr.desktop >/dev/null <<'EOF'
+sudo tee /usr/share/APPLaunch/applications/zdr.desktop >/dev/null <<'EOF'
 [Desktop Entry]
-Name=zeroSDR
+Name=zDR
 Comment=Lightweight SDR receiver
-Exec=bin/run-zerosdr
+Exec=bin/run-zdr
 Terminal=false
-Icon=share/images/zerosdr.png
+Icon=share/images/zdr.png
 Type=Application
 EOF
 ```
 
 字段说明：
 
-- `Exec=bin/run-zerosdr`：相对 `/usr/share/APPLaunch` 解析。
+- `Exec=bin/run-zdr`：相对 `/usr/share/APPLaunch` 解析。
 - `Terminal=false`：GUI 程序直接启动。
-- `Icon=share/images/zerosdr.png`：相对 APPLaunch 图标目录。
+- `Icon=share/images/zdr.png`：相对 APPLaunch 图标目录。
 
 ### 4.6 重启 APPLaunch
 
@@ -370,7 +370,7 @@ amixer -c 1 cset name='DACR Playback Volume' 179
 sudo alsactl store
 ```
 
-wrapper 已包含这两条命令，所以每次从 APPLaunch 启动 zeroSDR 都会重新设置。
+wrapper 已包含这两条命令，所以每次从 APPLaunch 启动 zDR 都会重新设置。
 
 ### 5.3 PipeWire quantum
 
@@ -432,7 +432,7 @@ ls -l /dev/fb_lcd
 cat /proc/fb
 ```
 
-zeroSDR 支持 `-d <device>`，wrapper 已自动传入。
+zDR 支持 `-d <device>`，wrapper 已自动传入。
 
 ### 6.2 键盘
 
@@ -442,7 +442,7 @@ Cardputer Zero 使用 TCA8418：
 /dev/input/by-path/platform-3f804000.i2c-event
 ```
 
-zeroSDR 会自动识别设备名中的 `tca8418`，并使用 Cardputer Zero 专用键位映射。
+zDR 会自动识别设备名中的 `tca8418`，并使用 Cardputer Zero 专用键位映射。
 
 **按 `H` 可以随时在屏幕上打开按键列表**；在列表页按 `→` 切到设置页
 （FM 去加重、音频 AGC、FFT 大小、采样率），`H` 关闭。
@@ -465,7 +465,7 @@ zeroSDR 会自动识别设备名中的 `tca8418`，并使用 Cardputer Zero 专�
 | `G` | 硬件 AGC 开关 |
 | `M` | 显示模式 |
 | `Y` | 显示缩放 |
-| `Fn` + `P`（F12） | 截图（`~/zerosdr_screenshot_*.png`） |
+| `Fn` + `P`（F12） | 截图（`~/zdr_screenshot_*.png`） |
 | `H` | 按键列表（`→` 切设置页） |
 | `Tab` | SDR / ADSB 页面切换 |
 | `Esc`（长按 2 秒） | 退出 |
@@ -511,7 +511,7 @@ sudo pkill readsb
 sudo pkill -f rtl_
 ```
 
-不建议让 readsb 的 systemd 服务常驻；zeroSDR 会自己管理 readsb。
+不建议让 readsb 的 systemd 服务常驻；zDR 会自己管理 readsb。
 
 ### 7.3 USB 稳定性
 
@@ -534,7 +534,7 @@ Audio buffer underrun
 
 ## 8. ADSB 部署
 
-zeroSDR 的 ADSB 页面本身只负责解析 `aircraft.json`，真正解码 1090 MHz 的是外部程序 **readsb**。
+zDR 的 ADSB 页面本身只负责解析 `aircraft.json`，真正解码 1090 MHz 的是外部程序 **readsb**。
 
 ### 8.1 不要直接使用 Debian 的 readsb
 
@@ -592,7 +592,7 @@ sudo systemctl disable --now readsb.service
 sudo apt-mark hold readsb
 ```
 
-### 8.4 zeroSDR 中的配置
+### 8.4 zDR 中的配置
 
 当前源码使用：
 
@@ -603,7 +603,7 @@ sudo apt-mark hold readsb
 
 > 如果你使用的是旧版源码，需要先把 `src/pages/adsb_page.cpp` 里的
 > `/home/edwin/readsb/readsb` 改成 `/usr/bin/readsb`，并把配置路径改成
-> `/home/pi/.config/zerosdr/config.json` 的 `adsb` 段。
+> `/home/pi/.config/zdr/config.json` 的 `adsb` 段。
 
 以及默认：
 
@@ -617,7 +617,7 @@ sudo apt-mark hold readsb
 观察者位置保存统一配置文件的 `adsb` 段：
 
 ```text
-/home/pi/.config/zerosdr/config.json
+/home/pi/.config/zdr/config.json
 ```
 
 启动 ADSB 页面后：
@@ -625,7 +625,7 @@ sudo apt-mark hold readsb
 - 按 `Tab` 切到 ADSB
 - 按 `L` 设置经纬度（距离/雷达视图需要）
 - `G` 切换增益模式，`+/-` 调整
-- 按 `Tab` 切回 SDR；zeroSDR 会杀掉 readsb 并重新初始化 RTL-SDR
+- 按 `Tab` 切回 SDR；zDR 会杀掉 readsb 并重新初始化 RTL-SDR
 
 如果 ADSB 页面没有飞机：
 
@@ -638,7 +638,7 @@ ls -l /tmp/readsb/aircraft.json
 
 ## 9. 启动与验证
 
-1. 从 APPLaunch 打开 **zeroSDR**
+1. 从 APPLaunch 打开 **zDR**
 2. 确认屏幕显示频谱/瀑布
 3. 确认 RTL-SDR 被识别
 4. 确认音频有输出
@@ -678,7 +678,7 @@ ls -l /dev/fb*
 手动测试：
 
 ```bash
-/usr/share/APPLaunch/bin/zerosdr -d /dev/fb_lcd
+/usr/share/APPLaunch/bin/zdr -d /dev/fb_lcd
 ```
 
 ### 10.2 键盘无反应
@@ -692,7 +692,7 @@ ls -l /dev/input/by-path/platform-3f804000.i2c-event
 手动指定：
 
 ```bash
-/usr/share/APPLaunch/bin/zerosdr \
+/usr/share/APPLaunch/bin/zdr \
     -d /dev/fb_lcd \
     -k /dev/input/by-path/platform-3f804000.i2c-event
 ```
@@ -743,7 +743,7 @@ ls -l /usr/bin/readsb
 
 - 使用了 Debian 不带 RTL-SDR 的 readsb
 - `readsb.service` 正在运行并占用设备
-- zeroSDR 还没有释放 RTL-SDR
+- zDR 还没有释放 RTL-SDR
 - 天线不是 1090 MHz
 
 ### 10.7 Camera App 被 libcamera 升级破坏
@@ -790,10 +790,10 @@ sudo apt-mark hold \
 
 ```bash
 sudo rm -f \
-    /usr/share/APPLaunch/bin/zerosdr \
-    /usr/share/APPLaunch/bin/run-zerosdr \
-    /usr/share/APPLaunch/applications/zerosdr.desktop \
-    /usr/share/APPLaunch/share/images/zerosdr.png
+    /usr/share/APPLaunch/bin/zdr \
+    /usr/share/APPLaunch/bin/run-zdr \
+    /usr/share/APPLaunch/applications/zdr.desktop \
+    /usr/share/APPLaunch/share/images/zdr.png
 ```
 
 重启 APPLaunch：
@@ -817,7 +817,7 @@ sudo rm -f /usr/bin/readsb
 在可信赖的构建机上：
 
 ```bash
-cd ~/zerosdr
+cd ~/zdr
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 ```
@@ -825,17 +825,17 @@ cmake --build build -j"$(nproc)"
 复制到设备：
 
 ```bash
-scp build/zerosdr share/images/zerosdr.png \
+scp build/zdr share/images/zdr.png \
     pi@<cardputer-ip>:/tmp/
 ```
 
 在 Cardputer Zero 上：
 
 ```bash
-sudo install -m 755 /tmp/zerosdr \
-    /usr/share/APPLaunch/bin/zerosdr
-sudo install -m 644 /tmp/zerosdr.png \
-    /usr/share/APPLaunch/share/images/zerosdr.png
+sudo install -m 755 /tmp/zdr \
+    /usr/share/APPLaunch/bin/zdr
+sudo install -m 644 /tmp/zdr.png \
+    /usr/share/APPLaunch/share/images/zdr.png
 # 再按第 4.4、4.5 节创建 wrapper 和 desktop
 systemctl --user restart APPLaunch.service
 ```

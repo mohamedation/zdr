@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=zdr
+Exec=/usr/share/APPLaunch/bin/zdr
+Terminal=false
+Icon=share/images/zdr.png
+Type=Application

@@ -123,7 +123,7 @@ bool InputHandler::init(const char* device_path) {
         }
     }
 
-    const char* keymap_override = getenv("ZEROSDR_KEYMAP");
+    const char* keymap_override = getenv("ZDR_KEYMAP");
     if (keymap_override && strcmp(keymap_override, "cardputer-zero") == 0) {
         cardputer_zero_ = true;
     }
@@ -182,7 +182,7 @@ AppKeyCode InputHandler::pollKey() {
             esc_held_ = (ev.value != 0);
         }
 
-        static const bool debug_keys = (getenv("ZEROSDR_DEBUG_KEYS") != nullptr);
+        static const bool debug_keys = (getenv("ZDR_DEBUG_KEYS") != nullptr);
         if (debug_keys) {
             std::cout << "Key event: code=" << ev.code
                       << " value=" << ev.value

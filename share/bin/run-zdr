@@ -44,6 +44,6 @@ if [ -e "$KBD" ]; then
 fi
 
 # Works both from the APPLaunch package layout and a plain /usr/bin install.
-BIN=/usr/share/APPLaunch/bin/zerosdr
-[ -x "$BIN" ] || BIN=/usr/bin/zerosdr
+BIN=/usr/share/APPLaunch/bin/zdr
+[ -x "$BIN" ] || BIN=/usr/bin/zdr
 exec "$BIN" "$@"

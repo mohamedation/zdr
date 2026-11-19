@@ -12,7 +12,7 @@ std::string homeDir() {
     return std::string(home != nullptr && *home != '\0' ? home : "/home/pi");
 }
 
-std::string configDir() { return homeDir() + "/.config/zerosdr"; }
+std::string configDir() { return homeDir() + "/.config/zdr"; }
 
 nlohmann::json readJson(const std::string& path) {
     std::ifstream in(path);

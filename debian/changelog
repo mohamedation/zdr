@@ -1,4 +1,4 @@
-zerosdr (0.3.8) trixie; urgency=medium
+zdr (0.3.8) trixie; urgency=medium
 
   * Tab now opens a translucent page menu (SDR / Spectrum / ADSB) instead of
     switching pages immediately
@@ -16,7 +16,7 @@ zerosdr (0.3.8) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Tue, 17 Nov 2026 14:30:00 +0800
 
-zerosdr (0.3.7) trixie; urgency=medium
+zdr (0.3.7) trixie; urgency=medium
 
   * New wideband spectrum page (Tab now cycles SDR -> Spectrum -> ADSB):
     a qspectrumanalyzer style sweep over a user supplied start/stop range,
@@ -25,7 +25,7 @@ zerosdr (0.3.7) trixie; urgency=medium
     (on by default) and a translucent help overlay; the range is saved in
     the spectrum section of the config file and the capture is released
     when the page is left
-  * All settings move into one JSON file, ~/.config/zerosdr/config.json
+  * All settings move into one JSON file, ~/.config/zdr/config.json
     (system / sdr / spectrum / adsb); the old sdr_settings.json,
     spectrum_range.txt, adsb_config.json and guide.json are imported once
   * Fn+D / Fn+S adjust the system sink volume on every page, including the
@@ -50,7 +50,7 @@ zerosdr (0.3.7) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Sun, 15 Nov 2026 21:40:00 +0800
 
-zerosdr (0.3.6) trixie; urgency=medium
+zdr (0.3.6) trixie; urgency=medium
 
   * ADSB: no position is ever invented. The legacy settings menu shows
     NOT SET instead of 0.0 when nothing is configured, a config file only
@@ -62,7 +62,7 @@ zerosdr (0.3.6) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Tue, 10 Nov 2026 22:20:00 +0800
 
-zerosdr (0.3.5) trixie; urgency=medium
+zdr (0.3.5) trixie; urgency=medium
 
   * H -> settings -> SHOW GUIDE now opens the guide immediately instead of
     only arming it for the next start; the ADSB page reloads the observer
@@ -73,7 +73,7 @@ zerosdr (0.3.5) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Tue, 10 Nov 2026 22:00:00 +0800
 
-zerosdr (0.3.4) trixie; urgency=medium
+zdr (0.3.4) trixie; urgency=medium
 
   * First-run guide: while editing the observer latitude/longitude, ESC
     cancels the edit, LEFT/RIGHT cancels and changes page, UP/DOWN
@@ -83,7 +83,7 @@ zerosdr (0.3.4) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Tue, 10 Nov 2026 21:45:00 +0800
 
-zerosdr (0.3.3) trixie; urgency=medium
+zdr (0.3.3) trixie; urgency=medium
 
   * Add a dismissible first-run guide: H/Tab/Enter overview, observer
     position with inline latitude/longitude entry, and a "show on next
@@ -95,9 +95,9 @@ zerosdr (0.3.3) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Tue, 10 Nov 2026 21:20:00 +0800
 
-zerosdr (0.3.2) trixie; urgency=medium
+zdr (0.3.2) trixie; urgency=medium
 
-  * Bundle a readsb build with the RTL-SDR backend at /usr/lib/zerosdr/readsb
+  * Bundle a readsb build with the RTL-SDR backend at /usr/lib/zdr/readsb
     (the Debian readsb package is built without it), prefer it over
     /usr/bin/readsb, and log clearly when no decoder is available
   * Let dh_shlibdeps compute Depends so the bundled decoder's libraries
@@ -105,7 +105,7 @@ zerosdr (0.3.2) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Tue, 10 Nov 2026 20:40:00 +0800
 
-zerosdr (0.3.1) trixie; urgency=medium
+zdr (0.3.1) trixie; urgency=medium
 
   * ADSB: translucent radar sweep with a gradient tail, per-revolution
     sonar ping, 90-degree ticks and a new-aircraft chime
@@ -119,11 +119,11 @@ zerosdr (0.3.1) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Mon, 09 Nov 2026 15:20:00 +0800
 
-zerosdr (0.3.0) trixie; urgency=medium
+zdr (0.3.0) trixie; urgency=medium
 
   * Add on-screen help overlay (H) with a settings tab: FM de-emphasis,
     audio AGC, FFT size and sample rate, persisted in
-    ~/.config/zerosdr/sdr_settings.json
+    ~/.config/zdr/sdr_settings.json
   * Rework the Cardputer Zero TCA8418 keymap (F/Z/X/C arrows, Shift for
     coarse tuning, fn layer codes, sym-layer decimal point)
   * Keep the display span inside the captured band when the sample rate
@@ -135,7 +135,7 @@ zerosdr (0.3.0) trixie; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Mon, 09 Nov 2026 13:10:00 +0800
 
-zerosdr (0.2.0) bullseye; urgency=medium
+zdr (0.2.0) bullseye; urgency=medium
 
   * Add audio demodulation support (FM/NFM/AM)
   * Add ALSA audio output with volume control and squelch detection
@@ -145,7 +145,7 @@ zerosdr (0.2.0) bullseye; urgency=medium
 
  -- Weiming Feng <bestedwin@gmail.com>  Wed, 14 May 2026 14:40:00 +0800
 
-zerosdr (0.1.0) unstable; urgency=low
+zdr (0.1.0) unstable; urgency=low
 
   * Initial release
   * Basic spectrum visualization

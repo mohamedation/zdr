@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=zeroSDR
+Name=zDR
 Comment=Lightweight SDR receiver with spectrum, waterfall and audio
-Exec=bin/run-zerosdr
+Exec=bin/run-zdr
 Terminal=false
-Icon=share/images/zerosdr.png
+Icon=share/images/zdr.png
 Type=Application

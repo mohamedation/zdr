@@ -9,7 +9,7 @@ zDR is an open source SDR receiver for Linux-based small-screen embedded
 systems. It renders the spectrum and waterfall straight into the framebuffer
 and demodulates FM / NFM / AM / USB / LSB audio through ALSA.
 
-![zDR Interface](images/zerosdr.jpg)
+![zDR Interface](images/zdr.jpg)
 
 > **Press `H` on the SDR page to show the on-screen key list.**
 > Press `→` there to switch to the settings tab (FM de-emphasis, audio AGC,
@@ -71,9 +71,9 @@ sudo apt-get install -y build-essential cmake librtlsdr-dev libasound2-dev libpu
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 
-./build/zerosdr                    # defaults: 100 MHz, 1.024 MS/s, auto gain
-./build/zerosdr -f 99300000        # 99.3 MHz FM
-./build/zerosdr -s 2048000 -g 20   # custom sample rate and gain
+./build/zdr                    # defaults: 100 MHz, 1.024 MS/s, auto gain
+./build/zdr -f 99300000        # 99.3 MHz FM
+./build/zdr -s 2048000 -g 20   # custom sample rate and gain
 ```
 
 `Release` build is required on the CM0: FFT + demodulation + resampling all run
@@ -85,7 +85,7 @@ zDR is in the Cardputer Zero AppStore: open the store, find **zDR** and
 install it. On the device shell the same package is:
 
 ```bash
-sudo apt update && sudo apt install zerosdr
+sudo apt update && sudo apt install zdr
 ```
 
 It installs the binary, the APPLaunch entry and icon, and the `readsb` decoder
@@ -98,27 +98,27 @@ relative to `/usr/share/APPLaunch`. The final layout is:
 
 ```text
 /usr/share/APPLaunch/
-├── applications/zerosdr.desktop
-├── bin/zerosdr                 # binary
-├── bin/run-zerosdr             # wrapper: display / keyboard / audio setup
-└── share/images/zerosdr.png    # icon
+├── applications/zdr.desktop
+├── bin/zdr                 # binary
+├── bin/run-zdr             # wrapper: display / keyboard / audio setup
+└── share/images/zdr.png    # icon
 ```
 
 ### 1. Build (on the device, recommended)
 
 ```bash
 sudo apt-get install -y build-essential cmake librtlsdr-dev libasound2-dev libpulse-dev libfreetype-dev nlohmann-json3-dev
-cd ~/zerosdr
+cd ~/zdr
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
-file build/zerosdr        # should report: ARM aarch64
+file build/zdr        # should report: ARM aarch64
 ```
 
 ### 2. Install the binary
 
 ```bash
 sudo install -d /usr/share/APPLaunch/bin
-sudo install -m 755 build/zerosdr /usr/share/APPLaunch/bin/zerosdr
+sudo install -m 755 build/zdr /usr/share/APPLaunch/bin/zdr
 ```
 
 ### 3. Install the launcher wrapper
@@ -128,7 +128,7 @@ cannot be put in `Exec`. The wrapper also reuses the user's PipeWire session
 and keeps the ES8389 DAC at -6 dB (0 dB causes dropouts on this hardware).
 
 ```bash
-sudo tee /usr/share/APPLaunch/bin/run-zerosdr >/dev/null <<'EOF'
+sudo tee /usr/share/APPLaunch/bin/run-zdr >/dev/null <<'EOF'
 #!/bin/sh
 set -eu
 
@@ -172,22 +172,22 @@ if [ -e "$KBD" ]; then
     set -- "$@" -k "$KBD"
 fi
 
-exec /usr/share/APPLaunch/bin/zerosdr "$@"
+exec /usr/share/APPLaunch/bin/zdr "$@"
 EOF
-sudo chmod 755 /usr/share/APPLaunch/bin/run-zerosdr
+sudo chmod 755 /usr/share/APPLaunch/bin/run-zdr
 ```
 
 ### 4. Install the desktop entry
 
 ```bash
 sudo install -d /usr/share/APPLaunch/applications
-sudo tee /usr/share/APPLaunch/applications/zerosdr.desktop >/dev/null <<'EOF'
+sudo tee /usr/share/APPLaunch/applications/zdr.desktop >/dev/null <<'EOF'
 [Desktop Entry]
 Name=zDR
 Comment=Lightweight SDR receiver
-Exec=bin/run-zerosdr
+Exec=bin/run-zdr
 Terminal=false
-Icon=share/images/zerosdr.png
+Icon=share/images/zdr.png
 Type=Application
 EOF
 ```
@@ -196,8 +196,8 @@ EOF
 
 ```bash
 sudo install -d /usr/share/APPLaunch/share/images
-sudo install -m 644 share/images/zerosdr.png \
-    /usr/share/APPLaunch/share/images/zerosdr.png
+sudo install -m 644 share/images/zdr.png \
+    /usr/share/APPLaunch/share/images/zdr.png
 ```
 
 ### 6. Permissions (no root needed)
@@ -246,10 +246,10 @@ Audio output initialized: 48000 Hz, 1 channel(s)
 ### Uninstall
 
 ```bash
-sudo rm -f /usr/share/APPLaunch/bin/zerosdr \
-           /usr/share/APPLaunch/bin/run-zerosdr \
-           /usr/share/APPLaunch/applications/zerosdr.desktop \
-           /usr/share/APPLaunch/share/images/zerosdr.png
+sudo rm -f /usr/share/APPLaunch/bin/zdr \
+           /usr/share/APPLaunch/bin/run-zdr \
+           /usr/share/APPLaunch/applications/zdr.desktop \
+           /usr/share/APPLaunch/share/images/zdr.png
 systemctl --user restart APPLaunch.service
 ```
 
@@ -257,10 +257,10 @@ systemctl --user restart APPLaunch.service
 
 ```bash
 dpkg-buildpackage -us -uc -b
-sudo dpkg -i ../zerosdr_*.deb
+sudo dpkg -i ../zdr_*.deb
 ```
 
-The package installs `usr/bin/zerosdr` plus the APPLaunch entry, binary and
+The package installs `usr/bin/zdr` plus the APPLaunch entry, binary and
 icon under `/usr/share/APPLaunch/`. It deliberately does **not** install a
 system `/usr/share/applications` entry (the AppStore path policy only allows
 `usr/share/<package>/**` and `usr/share/APPLaunch/**`), and no `-dbgsym`
@@ -326,7 +326,7 @@ codes, and plain letters are used for the SDR controls.
 | `G` | Hardware AGC on/off |
 | `M` | Color theme for spectrum and waterfall |
 | `Y` | Display zoom (only spans the sample rate can fill) |
-| `Fn`+`P` (F12) | Screenshot (`~/zerosdr_screenshot_*.png`) |
+| `Fn`+`P` (F12) | Screenshot (`~/zdr_screenshot_*.png`) |
 | `H` | Key list, then `→` for settings |
 | `Tab` | Page menu (select with arrows, `Enter` opens) |
 | `Esc` (hold 2 s) | Quit, with a centered progress prompt |
@@ -370,7 +370,7 @@ nothing because the stored span was wider than the captured bandwidth.
 All settings live in one file:
 
 ```text
-~/.config/zerosdr/config.json
+~/.config/zdr/config.json
 ```
 
 ```json
@@ -456,7 +456,7 @@ sweep) turn with it.
   unit vector, so it does not snap when it crosses 0°/360°.
 - On boards without the IMU the radar simply stays north-up and `I` beeps.
 
-Settings live in `~/.config/zerosdr/config.json`:
+Settings live in `~/.config/zdr/config.json`:
 
 ```json
 "imu": {
@@ -478,7 +478,7 @@ takes precedence until it is cleared, and the ADSB settings overlay shows
 whether the current source is GPS, MANUAL, SAVED or NOT SET.
 
 ADSB decoding is done by a `readsb` build with the RTL-SDR backend that ships
-inside this package (`/usr/lib/zerosdr/readsb`); no separate decoder install is
+inside this package (`/usr/lib/zdr/readsb`); no separate decoder install is
 needed. A system `/usr/bin/readsb` is used as a fallback if present.
 
 `H` opens a translucent rounded popup with two tabs: the key list and a settings tab
@@ -504,7 +504,7 @@ with a waterfall below it. The RTL-SDR V4 range is 24–1766 MHz.
 
 On first use it asks for START and STOP in MHz. Use the digits and `.`,
 `Up`/`Down` to switch fields and `Enter` to accept each field; the range is
-saved to the `spectrum` section of `~/.config/zerosdr/config.json` and
+saved to the `spectrum` section of `~/.config/zdr/config.json` and
 reused afterwards.
 
 | Key | Action |
@@ -546,7 +546,7 @@ Notes:
 ## Command line options
 
 ```text
-Usage: zerosdr [options]
+Usage: zdr [options]
   -f <freq>     Center frequency in Hz (default: 100000000)
   -s <rate>     Sample rate in Hz (default: 1024000)
   -g <gain>     Gain in dB (default: auto)
@@ -641,7 +641,7 @@ ls -l /dev/fb*
 Run manually to isolate APPLaunch:
 
 ```bash
-/usr/share/APPLaunch/bin/zerosdr -d /dev/fb_lcd \
+/usr/share/APPLaunch/bin/zdr -d /dev/fb_lcd \
     -k /dev/input/by-path/platform-3f804000.i2c-event
 ```
 
@@ -657,7 +657,7 @@ cmake -S . -B build-aarch64 -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
 cmake --build build-aarch64 -j"$(nproc)"
 
-scp build-aarch64/zerosdr pi@<cardputer-ip>:/tmp/
+scp build-aarch64/zdr pi@<cardputer-ip>:/tmp/
 ```
 
 ## License

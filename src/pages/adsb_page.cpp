@@ -15,7 +15,7 @@ namespace {
 // then fall back to a system-wide install.
 std::string findReadsbPath() {
     static const char* kCandidates[] = {
-        "/usr/lib/zerosdr/readsb",
+        "/usr/lib/zdr/readsb",
         "/usr/bin/readsb",
         "/usr/local/bin/readsb",
     };
@@ -57,7 +57,7 @@ ADSBPage::ADSBPage(Framebuffer& fb, SDRController& sdr, ADSBUIRenderer& ui, Rada
       last_json_read_(0) {
     const char* home = getenv("HOME");
     config_path_ = std::string(home ? home : "/home/pi") +
-                   "/.config/zerosdr/adsb_config.json";
+                   "/.config/zdr/adsb_config.json";
 }
 
 ADSBPage::~ADSBPage() {
@@ -106,7 +106,7 @@ void ADSBPage::onEnter() {
     } else if (!readsb_->isRunning()) {
         std::cout << "ADSBPage: readsb not running, starting it..." << std::endl;
 
-        // Stop zerosdr's SDR capture and close device to release RTL-SDR for readsb
+        // Stop zdr's SDR capture and close device to release RTL-SDR for readsb
         if (sdr_.isCapturing()) {
             sdr_.stopCapture();
             std::cout << "ADSBPage: Stopped SDR capture" << std::endl;

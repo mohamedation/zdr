@@ -1,14 +1,14 @@
-# zeroSDR
+# zDR
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20M5Stack-orange.svg)]()
 
 **简体中文** | [English](README.md)
 
-zeroSDR 是一个面向小屏幕嵌入式 Linux 的开源 SDR 接收程序。频谱和瀑布直接画进
+zDR 是一个面向小屏幕嵌入式 Linux 的开源 SDR 接收程序。频谱和瀑布直接画进
 framebuffer，音频解调（FM / NFM / AM / USB / LSB）通过 ALSA 输出。
 
-![zeroSDR 界面](images/zerosdr.jpg)
+![zDR 界面](images/zdr.jpg)
 
 > **在 SDR 页面按 `H` 可以随时显示屏幕按键列表。**
 > 在列表页按 `→` 切到设置页（FM 去加重、音频 AGC、FFT 大小、采样率），
@@ -68,20 +68,20 @@ sudo apt-get install -y build-essential cmake librtlsdr-dev libasound2-dev libpu
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 
-./build/zerosdr                    # 默认：100 MHz、1.024 MS/s、自动增益
-./build/zerosdr -f 99300000        # 99.3 MHz FM
-./build/zerosdr -s 2048000 -g 20   # 指定采样率和增益
+./build/zdr                    # 默认：100 MHz、1.024 MS/s、自动增益
+./build/zdr -f 99300000        # 99.3 MHz FM
+./build/zdr -s 2048000 -g 20   # 指定采样率和增益
 ```
 
 在 CM0 上**必须用 Release 构建**：FFT、解调、重采样要在四个小核上实时跑。
 
 ## 在 Cardputer Zero 上安装
 
-zeroSDR 已在 Cardputer Zero 应用商店（AppStore）上架：打开商店搜 **zeroSDR**
+zDR 已在 Cardputer Zero 应用商店（AppStore）上架：打开商店搜 **zDR**
 安装即可。在设备终端等价于：
 
 ```bash
-sudo apt update && sudo apt install zerosdr
+sudo apt update && sudo apt install zdr
 ```
 
 包里已经带好程序本体、APPLaunch 入口与图标，以及带 RTL-SDR 后端的
@@ -94,27 +94,27 @@ APPLaunch 以桌面用户 `pi` 启动应用，`Exec` / `Icon` 按 `/usr/share/AP
 
 ```text
 /usr/share/APPLaunch/
-├── applications/zerosdr.desktop
-├── bin/zerosdr                 # 主程序
-├── bin/run-zerosdr             # wrapper：屏幕 / 键盘 / 音频准备
-└── share/images/zerosdr.png    # 图标
+├── applications/zdr.desktop
+├── bin/zdr                 # 主程序
+├── bin/run-zdr             # wrapper：屏幕 / 键盘 / 音频准备
+└── share/images/zdr.png    # 图标
 ```
 
 ### 1. 在设备上构建（推荐）
 
 ```bash
 sudo apt-get install -y build-essential cmake librtlsdr-dev libasound2-dev libpulse-dev libfreetype-dev nlohmann-json3-dev
-cd ~/zerosdr
+cd ~/zdr
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
-file build/zerosdr        # 应显示 ARM aarch64
+file build/zdr        # 应显示 ARM aarch64
 ```
 
 ### 2. 安装主程序
 
 ```bash
 sudo install -d /usr/share/APPLaunch/bin
-sudo install -m 755 build/zerosdr /usr/share/APPLaunch/bin/zerosdr
+sudo install -m 755 build/zdr /usr/share/APPLaunch/bin/zdr
 ```
 
 ### 3. 安装启动 wrapper
@@ -124,7 +124,7 @@ APPLaunch 的 `Terminal=false` 模式不经过 shell，所以 `-d /dev/fb_lcd` �
 DAC 固定在 -6 dB（0 dB 会周期性断音）。
 
 ```bash
-sudo tee /usr/share/APPLaunch/bin/run-zerosdr >/dev/null <<'EOF'
+sudo tee /usr/share/APPLaunch/bin/run-zdr >/dev/null <<'EOF'
 #!/bin/sh
 set -eu
 
@@ -168,22 +168,22 @@ if [ -e "$KBD" ]; then
     set -- "$@" -k "$KBD"
 fi
 
-exec /usr/share/APPLaunch/bin/zerosdr "$@"
+exec /usr/share/APPLaunch/bin/zdr "$@"
 EOF
-sudo chmod 755 /usr/share/APPLaunch/bin/run-zerosdr
+sudo chmod 755 /usr/share/APPLaunch/bin/run-zdr
 ```
 
 ### 4. 安装桌面入口
 
 ```bash
 sudo install -d /usr/share/APPLaunch/applications
-sudo tee /usr/share/APPLaunch/applications/zerosdr.desktop >/dev/null <<'EOF'
+sudo tee /usr/share/APPLaunch/applications/zdr.desktop >/dev/null <<'EOF'
 [Desktop Entry]
-Name=zeroSDR
+Name=zDR
 Comment=Lightweight SDR receiver
-Exec=bin/run-zerosdr
+Exec=bin/run-zdr
 Terminal=false
-Icon=share/images/zerosdr.png
+Icon=share/images/zdr.png
 Type=Application
 EOF
 ```
@@ -192,8 +192,8 @@ EOF
 
 ```bash
 sudo install -d /usr/share/APPLaunch/share/images
-sudo install -m 644 share/images/zerosdr.png \
-    /usr/share/APPLaunch/share/images/zerosdr.png
+sudo install -m 644 share/images/zdr.png \
+    /usr/share/APPLaunch/share/images/zdr.png
 ```
 
 ### 6. 权限（不需要 root）
@@ -216,7 +216,7 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 systemctl --user restart APPLaunch.service
 ```
 
-从启动器打开 **zeroSDR**，依次确认：
+从启动器打开 **zDR**，依次确认：
 
 1. 频谱 / 瀑布在动
 2. **按 `H` 出现按键列表，按 `→` 进入设置页**
@@ -241,10 +241,10 @@ Audio output initialized: 48000 Hz, 1 channel(s)
 ### 卸载
 
 ```bash
-sudo rm -f /usr/share/APPLaunch/bin/zerosdr \
-           /usr/share/APPLaunch/bin/run-zerosdr \
-           /usr/share/APPLaunch/applications/zerosdr.desktop \
-           /usr/share/APPLaunch/share/images/zerosdr.png
+sudo rm -f /usr/share/APPLaunch/bin/zdr \
+           /usr/share/APPLaunch/bin/run-zdr \
+           /usr/share/APPLaunch/applications/zdr.desktop \
+           /usr/share/APPLaunch/share/images/zdr.png
 systemctl --user restart APPLaunch.service
 ```
 
@@ -252,10 +252,10 @@ systemctl --user restart APPLaunch.service
 
 ```bash
 dpkg-buildpackage -us -uc -b
-sudo dpkg -i ../zerosdr_*.deb
+sudo dpkg -i ../zdr_*.deb
 ```
 
-包内安装 `usr/bin/zerosdr` 和 `/usr/share/APPLaunch/` 下的入口、主程序与图标；
+包内安装 `usr/bin/zdr` 和 `/usr/share/APPLaunch/` 下的入口、主程序与图标；
 **不会**安装系统级 `/usr/share/applications` 入口（AppStore 的路径规则只允许
 `usr/share/<包名>/**` 和 `usr/share/APPLaunch/**`），也不会生成 `-dbgsym` 包。
 
@@ -312,13 +312,13 @@ TCA8418 键盘会自动识别（`tca8418c`）。`F`/`Z`/`X`/`C` 直接作为方�
 | `G` | 硬件 AGC 开关 |
 | `M` | 频谱与瀑布配色主题（DEFAULT/CLASSIC/TURBO/INFERNO/VIRIDIS/PLASMA） |
 | `Y` | 显示缩放（只在采样率允许的档位内循环） |
-| `Fn`+`P`（F12） | 截图（`~/zerosdr_screenshot_*.png`） |
+| `Fn`+`P`（F12） | 截图（`~/zdr_screenshot_*.png`） |
 | `H` | 按键列表，`→` 进设置页 |
 | `Tab` | 页面菜单（方向键选择，`Enter` 进入） |
 | `Esc`（长按 2 秒） | 退出，屏幕中央有进度提示 |
 
 `Fn`+`D` / `Fn`+`S` 在任何页面都能调节系统音量。launcher 的 labwc 绑定通常
-是 5% 一档；如果 300 ms 内系统音量没有变化，zeroSDR 会自己按 10% 调整，
+是 5% 一档；如果 300 ms 内系统音量没有变化，zDR 会自己按 10% 调整，
 并用 SDR 状态栏或频谱/ADSB 页的 `VOL n%` 提示反馈。SDR 页按音量 + 还会
 同时取消静音。
 
@@ -360,7 +360,7 @@ TCA8418 键盘会自动识别（`tca8418c`）。`F`/`Z`/`X`/`C` 直接作为方�
 所有设置统一保存在：
 
 ```text
-~/.config/zerosdr/config.json
+~/.config/zdr/config.json
 ```
 
 ```json
@@ -414,7 +414,7 @@ TrueType 字体渲染。
 ### 罗盘（BMI270 + BMM150）
 
 部分 Cardputer Zero 主板带有 BMI270 加速度计和 BMM150 磁力计（磁力计挂在 BMI270
-的辅助 I²C 总线上）。zeroSDR 通过内核 IIO 的 sysfs 设备读取两个传感器，不需要额外
+的辅助 I²C 总线上）。zDR 通过内核 IIO 的 sysfs 设备读取两个传感器，不需要额外
 驱动、守护进程或权限。检测到之后，雷达可以切换为**航向朝上**：罗盘刻度随设备转动，
 让机身上边所指的方向始终在圆盘顶部，飞机光点和扫描线也一起转。
 
@@ -425,7 +425,7 @@ TrueType 字体渲染。
 - 航向由加速度计做倾斜补偿，并按单位向量平滑，跨过 0°/360° 时不会跳变。
 - 没有 IMU 的机型，雷达保持北朝上，按 `I` 只会响一声提示。
 
-设置保存在 `~/.config/zerosdr/config.json`：
+设置保存在 `~/.config/zdr/config.json`：
 
 ```json
 "imu": {
@@ -445,7 +445,7 @@ TrueType 字体渲染。
 GPS / MANUAL / SAVED / NOT SET。
 
 ADSB 解码使用随包安装的 `readsb`（带 RTL-SDR 后端，位于
-`/usr/lib/zerosdr/readsb`），不需要另外安装解码器；如果系统里有
+`/usr/lib/zdr/readsb`），不需要另外安装解码器；如果系统里有
 `/usr/bin/readsb` 则作为后备。
 
 按 `H` 打开全屏浮层，两个标签页：按键列表和设置页。设置页可以查看/修改观测点
@@ -467,7 +467,7 @@ ADSB 解码使用随包安装的 `readsb`（带 RTL-SDR 后端，位于
 频谱，下面配瀑布。RTL-SDR V4 的范围是 24–1766 MHz。
 
 第一次进入时会要求输入 START / STOP（MHz）。用数字和 `.` 输入，`↑`/`↓` 切换字段，
-`Enter` 逐项确认；范围保存在 `~/.config/zerosdr/config.json` 的 `spectrum` 段里，
+`Enter` 逐项确认；范围保存在 `~/.config/zdr/config.json` 的 `spectrum` 段里，
 之后直接复用。
 
 | 按键 | 功能 |
@@ -502,7 +502,7 @@ ADSB 解码使用随包安装的 `readsb`（带 RTL-SDR 后端，位于
 ## 命令行参数
 
 ```text
-Usage: zerosdr [options]
+Usage: zdr [options]
   -f <freq>     中心频率（Hz，默认 100000000）
   -s <rate>     采样率（Hz，默认 1024000）
   -g <gain>     增益（dB，默认自动）
@@ -580,7 +580,7 @@ ls -l /dev/fb*
 手动运行排除 APPLaunch 因素：
 
 ```bash
-/usr/share/APPLaunch/bin/zerosdr -d /dev/fb_lcd \
+/usr/share/APPLaunch/bin/zdr -d /dev/fb_lcd \
     -k /dev/input/by-path/platform-3f804000.i2c-event
 ```
 
@@ -596,7 +596,7 @@ cmake -S . -B build-aarch64 -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
 cmake --build build-aarch64 -j"$(nproc)"
 
-scp build-aarch64/zerosdr pi@<cardputer-ip>:/tmp/
+scp build-aarch64/zdr pi@<cardputer-ip>:/tmp/
 ```
 
 ## 许可证

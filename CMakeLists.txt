@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(zeroSDR VERSION 0.3.8 LANGUAGES C CXX)
+project(zDR VERSION 0.3.8 LANGUAGES C CXX)
 
 # Default to an optimized build. Without this, a plain `cmake ..` produces
 # an unoptimized binary that cannot keep up with real-time audio on the
@@ -121,15 +121,15 @@ set(SOURCES
 )
 
 # Executable
-add_executable(zerosdr ${SOURCES})
+add_executable(zdr ${SOURCES})
 
 # Include directories
-target_include_directories(zerosdr PRIVATE
+target_include_directories(zdr PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # Link libraries
-target_link_libraries(zerosdr PRIVATE
+target_link_libraries(zdr PRIVATE
     ${RTL_SDR_LIB}
     ${M_LIB}
     Threads::Threads
@@ -140,24 +140,24 @@ target_link_libraries(zerosdr PRIVATE
 
 # Install
 # 1) APPLaunch layout (used by the CardputerZero AppStore package)
-install(TARGETS zerosdr DESTINATION share/APPLaunch/bin)
-install(PROGRAMS share/bin/run-zerosdr DESTINATION share/APPLaunch/bin)
-install(FILES share/APPLaunch/applications/zerosdr.desktop
+install(TARGETS zdr DESTINATION share/APPLaunch/bin)
+install(PROGRAMS share/bin/run-zdr DESTINATION share/APPLaunch/bin)
+install(FILES share/APPLaunch/applications/zdr.desktop
         DESTINATION share/APPLaunch/applications)
-install(FILES share/images/zerosdr.png
+install(FILES share/images/zdr.png
         DESTINATION share/APPLaunch/share/images)
 # ADSB decoder bundled with the RTL-SDR backend (Debian's readsb lacks it).
-install(PROGRAMS vendor/readsb/readsb DESTINATION lib/zerosdr)
+install(PROGRAMS vendor/readsb/readsb DESTINATION lib/zdr)
 
 # 2) CLI install. The system-wide /usr/share/applications entry is NOT
 #    installed: the AppStore only allows usr/share/APPLaunch/**,
 #    usr/share/<package-name>/** and a fixed list of shared dirs, so an
 #    entry directly under /usr/share/applications would be rejected.
-install(TARGETS zerosdr DESTINATION bin)
+install(TARGETS zdr DESTINATION bin)
 
 # CPack configuration for DEB packaging
 set(CPACK_GENERATOR "DEB")
-set(CPACK_PACKAGE_NAME "zerosdr")
+set(CPACK_PACKAGE_NAME "zdr")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_CONTACT "Weiming Feng <bestedwin@gmail.com>")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lightweight SDR interface for Raspberry Pi")

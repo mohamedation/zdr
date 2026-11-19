@@ -7,7 +7,7 @@ cmake-build-*/
 *.o
 *.so
 *.a
-zerosdr
+zdr
 
 # IDE files
 .vscode/
@@ -18,7 +18,7 @@ zerosdr
 
 # Debian packaging
 debian/.debhelper/
-debian/zerosdr/
+debian/zdr/
 debian/files
 debian/*.log
 debian/*.substvars
@@ -41,7 +41,7 @@ obj-*/
 debian/debhelper-build-stamp
 debian/files
 debian/.debhelper/
-debian/zerosdr/
+debian/zdr/
 
 # Agent instructions (kept local only)
 AGENTS.md

@@ -17,7 +17,7 @@ std::string makeScreenshotPath() {
 
     char base[256];
     std::snprintf(base, sizeof(base),
-                  "%s/zerosdr_screenshot_%04d%02d%02d_%02d%02d%02d",
+                  "%s/zdr_screenshot_%04d%02d%02d_%02d%02d%02d",
                   dir.c_str(), local.tm_year + 1900, local.tm_mon + 1,
                   local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec);
 
