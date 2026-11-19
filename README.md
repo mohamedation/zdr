@@ -3,8 +3,6 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20M5Stack-orange.svg)]()
 
-**English** | [简体中文](README.zh-CN.md)
-
 zDR is an open source SDR receiver for Linux-based small-screen embedded
 systems. It renders the spectrum and waterfall straight into the framebuffer
 and demodulates FM / NFM / AM / USB / LSB audio through ALSA.
