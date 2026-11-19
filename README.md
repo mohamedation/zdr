@@ -1,4 +1,5 @@
 # zDR
+**SDR & ADS-B for Cardputer Zero**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20M5Stack-orange.svg)]()
@@ -6,6 +7,28 @@
 zDR is an open source SDR receiver for Linux-based small-screen embedded
 systems. It renders the spectrum and waterfall straight into the framebuffer
 and demodulates FM / NFM / AM / USB / LSB audio through ALSA.
+
+zDR is an independently maintained continuation of
+[zeroSDR](https://github.com/nullbeing/zerosdr), originally developed by
+[nullbeing](https://github.com/nullbeing) (Weiming Feng). This fork exists to
+independently audit, maintain, and improve the application — mainly for my
+personal use — including reproducible builds and independently compiled
+dependencies such as `readsb`.
+
+It is not an official release of zeroSDR and is not affiliated with the
+upstream project. Prefer
+[upstream zeroSDR](https://github.com/nullbeing/zerosdr) if you want the
+original AppStore package and release line.
+
+## Upstream
+
+- Original project: https://github.com/nullbeing/zerosdr
+- Original author: [nullbeing](https://github.com/nullbeing) (Weiming Feng)
+
+Original copyright notices and GPL-3.0 terms are preserved. See
+[`LICENSE`](LICENSE) and individual source files for details.
+
+---
 
 ![zDR Interface](images/zdr.jpg)
 
@@ -47,7 +70,7 @@ and demodulates FM / NFM / AM / USB / LSB audio through ALSA.
 
 ## RTL-SDR V4 mount
 
-A 3D-printed mount designed by the zDR author for the RTL-SDR Blog V4
+A 3D-printed mount designed by Weiming Feng (nullbeing) for the RTL-SDR Blog V4
 dongle. It clamps the dongle to the back of the Cardputer Zero, so the receiver
 and the antenna connector travel as one unit; a short USB-C cable loops back to
 the device.
@@ -79,15 +102,16 @@ in real time on four small cores.
 
 ## Install on Cardputer Zero
 
-zDR is in the Cardputer Zero AppStore: open the store, find **zDR** and
-install it. On the device shell the same package is:
+Upstream [zeroSDR](https://github.com/nullbeing/zerosdr) is available in the
+Cardputer Zero AppStore. This fork is installed from source or a locally built
+`.deb` (see below). A package install looks like:
 
 ```bash
-sudo apt update && sudo apt install zdr
+sudo apt update && sudo apt install ./zdr_*.deb
 ```
 
-It installs the binary, the APPLaunch entry and icon, and the `readsb` decoder
-with the RTL-SDR backend, so nothing else needs to be set up.
+That installs the binary, the APPLaunch entry and icon, and the `readsb`
+decoder with the RTL-SDR backend.
 
 ## Manual deployment on Cardputer Zero
 
