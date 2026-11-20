@@ -1,0 +1,54 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: zdr
+Upstream-Contact: mohamedation <mohamedation@gmail.com>
+Source: https://github.com/mohamedation/zdr
+
+Files: *
+Copyright: 2024-2026 Weiming Feng
+           2026 mohamedation
+License: GPL-3.0-only
+
+Files: src/font8x16.cpp include/font.h
+Copyright: Linux kernel contributors
+Comment: PC Screen Font 8x16 from Linux lib/fonts/font_8x16.c
+License: GPL-2.0
+
+Files: vendor/readsb/*
+Copyright: wiedehopf and readsb contributors
+Comment: Prebuilt binary from https://github.com/wiedehopf/readsb (RTLSDR=yes).
+ See vendor/readsb/SOURCE.md for the pinned commit and SHA-256.
+License: GPL-3.0-or-later
+
+Files: hardware/rtl-sdr-v4-mount/*
+Copyright: Weiming Feng
+License: CC0-1.0
+
+License: GPL-3.0-only
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, version 3.
+ .
+ On Debian systems, the full text of the GNU General Public License
+ version 3 can be found in /usr/share/common-licenses/GPL-3.
+
+License: GPL-2.0
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; version 2.
+ .
+ On Debian systems, the full text of the GNU General Public License
+ version 2 can be found in /usr/share/common-licenses/GPL-2.
+
+License: GPL-3.0-or-later
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ On Debian systems, the full text of the GNU General Public License
+ version 3 can be found in /usr/share/common-licenses/GPL-3.
+
+License: CC0-1.0
+ To the extent possible under law, the author has waived all copyright
+ and related or neighboring rights to this work.
+ https://creativecommons.org/publicdomain/zero/1.0/

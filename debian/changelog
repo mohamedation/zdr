@@ -4,5 +4,7 @@ zdr (0.1.0) trixie; urgency=medium
   * Rename package, binary and install paths from zerosdr to zdr
   * Generate version.h from CMake so the project version is the single source
     of truth
+  * Exact 48 kHz sample-rate presets; PipeWire-first ALSA via run-zdr
+  * Pin vendored readsb (SOURCE.md) and CI arm64 .deb artifacts
 
- -- mohamedation <mohamedation@gmail.com>  Thu, 19 Nov 2026 15:53:00 +0100
+ -- mohamedation <mohamedation@gmail.com>  Fri, 20 Nov 2026 17:18:00 +0100

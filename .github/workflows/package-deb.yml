@@ -1,0 +1,49 @@
+name: Package deb
+
+# Builds an arm64 .deb for Cardputer Zero and uploads it as a workflow artifact.
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  deb-arm64:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v4
+      with:
+        platforms: arm64
+
+    - name: Build arm64 .deb in Debian trixie
+      run: |
+        docker run --rm --platform linux/arm64 \
+          -v "${{ github.workspace }}:/src" \
+          -w /src \
+          debian:trixie \
+          bash -c '
+            set -euo pipefail
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y --no-install-recommends \
+              build-essential debhelper cmake pkg-config \
+              librtlsdr-dev libasound2-dev libpulse-dev libfreetype-dev \
+              nlohmann-json3-dev libasound2-plugins \
+              file ca-certificates
+            test -x vendor/readsb/readsb
+            file vendor/readsb/readsb | grep -qi aarch64
+            dpkg-buildpackage -us -uc -b -j"$(nproc)"
+            mkdir -p /src/dist
+            cp -v ../zdr_*.deb /src/dist/
+            ls -lh /src/dist
+          '
+
+    - name: Upload .deb artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: zdr-arm64-deb
+        path: dist/zdr_*.deb
+        if-no-files-found: error
