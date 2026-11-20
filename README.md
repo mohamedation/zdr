@@ -92,10 +92,14 @@ sudo apt-get install -y build-essential cmake librtlsdr-dev libasound2-dev libpu
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 
-./build/zdr                    # defaults: 100 MHz, 1.024 MS/s, auto gain
+./build/zdr                    # defaults: 100 MHz, 1.2 MS/s, auto gain
 ./build/zdr -f 99300000        # 99.3 MHz FM
-./build/zdr -s 2048000 -g 20   # custom sample rate and gain
+./build/zdr -s 2160000 -g 20   # custom sample rate and gain
 ```
+
+Sample rates are multiples of 240 kHz (e.g. 0.96 / 1.2 / 1.68 / 2.16 / 2.4 MHz)
+so demodulated audio lands on exact 48 kHz. Other `-s` values are snapped to
+the nearest valid rate.
 
 `Release` build is required on the CM0: FFT + demodulation + resampling all run
 in real time on four small cores.
@@ -379,12 +383,14 @@ Rarely changed options live in the settings tab instead of hotkeys:
 | FM de-emphasis | 50 µs (CN/EU/Asia) / 75 µs (US) | 50 µs |
 | Audio AGC | On / Off | On |
 | FFT size | 256 / 512 / 1024 / 2048 | 512 |
-| Sample rate | 1.024 / 1.2 / 1.8 / 2.048 / 2.4 MHz | 1.024 MHz |
+| Sample rate | 0.96 / 1.2 / 1.68 / 2.16 / 2.4 MHz | 1.2 MHz |
 | First-run guide | `SHOW GUIDE`: reopen it now | — |
 
-Changing the sample rate resets the display span to the widest level that fits
-the new band (1.2 M → 1.0 M, 2.048 M → 2.0 M), so `Y` never appears to do
-nothing because the stored span was wider than the captured bandwidth.
+Rates are multiples of 240 kHz so the audio chain produces exact 48 kHz (avoids
+periodic dropouts from rates like 1.024 Msps → 51.2 kHz). Changing the sample
+rate resets the display span to the widest level that fits the new band
+(1.2 M → 1.0 M, 2.16 M → 2.0 M), so `Y` never appears to do nothing because
+the stored span was wider than the captured bandwidth.
 
 All settings live in one file:
 
@@ -401,7 +407,7 @@ All settings live in one file:
     "deemphasis_us": 50,
     "audio_agc": true,
     "fft_size": 512,
-    "sample_rate": 1024000,
+    "sample_rate": 1200000,
     "theme": 0
   },
   "spectrum": {
@@ -567,7 +573,7 @@ Notes:
 ```text
 Usage: zdr [options]
   -f <freq>     Center frequency in Hz (default: 100000000)
-  -s <rate>     Sample rate in Hz (default: 1024000)
+  -s <rate>     Sample rate in Hz (default: 1200000; snapped to ×240 kHz)
   -g <gain>     Gain in dB (default: auto)
   -d <device>   Framebuffer device (default: /dev/fb0)
   -k <device>   Keyboard input device (default: auto-detect)

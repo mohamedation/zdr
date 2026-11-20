@@ -89,7 +89,7 @@ bool AppConfig::setDefaults() {
     set_if_missing(sdr, "deemphasis_us", 50);
     set_if_missing(sdr, "audio_agc", true);
     set_if_missing(sdr, "fft_size", 512);
-    set_if_missing(sdr, "sample_rate", 1024000);
+    set_if_missing(sdr, "sample_rate", 1200000);
     set_if_missing(sdr, "theme", 0);
 
     nlohmann::json& spectrum = section("spectrum");
@@ -121,7 +121,7 @@ void AppConfig::migrateLegacyFiles() {
         data_["sdr"]["deemphasis_us"] = sdr.value("deemphasis_us", 50);
         data_["sdr"]["audio_agc"] = sdr.value("audio_agc", true);
         data_["sdr"]["fft_size"] = sdr.value("fft_size", 512);
-        data_["sdr"]["sample_rate"] = sdr.value("sample_rate", 1024000);
+        data_["sdr"]["sample_rate"] = sdr.value("sample_rate", 1200000);
         data_["sdr"]["theme"] = sdr.value("theme", 0);
         migrated = true;
     }

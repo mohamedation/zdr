@@ -11,6 +11,7 @@
 #include "pages/adsb_page.h"
 #include "pages/spectrum_page.h"
 #include "app_config.h"
+#include "sample_rate.h"
 #include "screenshot.h"
 #include "version.h"
 #include <iostream>
@@ -35,7 +36,8 @@ void print_usage(const char* prog_name) {
     std::cout << "Usage: " << prog_name << " [options]\n"
               << "Options:\n"
               << "  -f <freq>     Set center frequency in Hz (default: 100000000)\n"
-              << "  -s <rate>     Set sample rate in Hz (default: 1024000)\n"
+              << "  -s <rate>     Set sample rate in Hz (default: 1200000;\n"
+              << "                snapped to a multiple of 240000 for exact 48 kHz audio)\n"
               << "  -g <gain>     Set gain in dB (default: auto)\n"
               << "  -d <device>   Set framebuffer device (default: /dev/fb0)\n"
               << "  -k <device>   Set keyboard input device (default: auto-detect)\n"
@@ -45,10 +47,11 @@ void print_usage(const char* prog_name) {
 int main(int argc, char* argv[]) {
     // Default parameters
     uint32_t center_freq = 100000000; // 100 MHz
-    uint32_t sample_rate = 1024000;   // 1.024 MHz
+    uint32_t sample_rate = SampleRate::kDefaultHz;  // 1.2 Msps → exact 48 kHz
     int gain = -1;                     // Auto gain
     const char* fb_device = "/dev/fb0";
     const char* kbd_device = nullptr;  // Auto-detect
+    bool sample_rate_from_cli = false;
 
     AppConfig::instance().load();
 
@@ -60,7 +63,8 @@ int main(int argc, char* argv[]) {
                 center_freq = atoi(optarg);
                 break;
             case 's':
-                sample_rate = atoi(optarg);
+                sample_rate = static_cast<uint32_t>(atoi(optarg));
+                sample_rate_from_cli = true;
                 break;
             case 'g':
                 gain = atoi(optarg);
@@ -77,6 +81,17 @@ int main(int argc, char* argv[]) {
             default:
                 print_usage(argv[0]);
                 return 1;
+        }
+    }
+
+    if (sample_rate_from_cli) {
+        const uint32_t requested = sample_rate;
+        sample_rate = SampleRate::snap(requested);
+        if (sample_rate != requested) {
+            std::cout << "Sample rate " << requested
+                      << " Hz snapped to " << sample_rate
+                      << " Hz (multiple of 240 kHz for exact 48 kHz audio)"
+                      << std::endl;
         }
     }
 

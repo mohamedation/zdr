@@ -1,20 +1,25 @@
 #include "pages/sdr_page.h"
 #include "app_config.h"
+#include "sample_rate.h"
 #include "screenshot.h"
 #include "core/first_run_guide.h"
 #include <iostream>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <ctime>
 #include <unistd.h>
 #include <fstream>
 #include <cstdlib>
+#include <limits>
 #include <sys/stat.h>
 
 // Static member initialization
-const uint32_t SDRPage::sample_rates_[] = {1024000, 1200000, 1800000, 2048000, 2400000};
+// Multiples of 240 kHz only — each decimates to exact 48 kHz audio.
+const uint32_t SDRPage::sample_rates_[] = {
+    960000, 1200000, 1680000, 2160000, 2400000};
 const int SDRPage::num_sample_rates_ = 5;
 
 const size_t SDRPage::fft_sizes_[] = {256, 512, 1024, 2048};
@@ -39,16 +44,16 @@ SDRPage::SDRPage(Framebuffer& fb, SDRController& sdr, AudioOutput& audio,
                  SDRUIRenderer& ui, InputHandler& input)
     : fb_(fb), sdr_(sdr), audio_(audio), ui_(ui), input_(input),
       fft_(512),
-      demod_(1024000, 48000),
+      demod_(SampleRate::kDefaultHz, SampleRate::kAudioOutHz),
       center_freq_(100000000),
-      sample_rate_(1024000),
+      sample_rate_(SampleRate::kDefaultHz),
       gain_(-1),
       volume_(1.0f),
       squelch_(0.0f),
       demod_mode_(0),
       audio_enabled_(true),
       audio_thread_running_(false),
-      rate_index_(0),
+      rate_index_(1),  // sample_rates_[1] == SampleRate::kDefaultHz (1.2 Msps)
       fft_index_(1),
       bw_index_(4),
       display_span_(1000000),
@@ -124,8 +129,9 @@ void SDRPage::onEnter() {
         center_freq_ = sdr_.getFrequency();
         sample_rate_ = sdr_.getSampleRate();
         // Restore the saved sample rate unless the command line overrode it
-        // (1024000 is the built-in default used by main()).
-        if (saved_sample_rate_ != 0 && sample_rate_ == 1024000 &&
+        // (kDefaultHz is the built-in default used by main()).
+        if (saved_sample_rate_ != 0 &&
+            sample_rate_ == SampleRate::kDefaultHz &&
             saved_sample_rate_ != sample_rate_) {
             sample_rate_ = saved_sample_rate_;
             sdr_.setSampleRate(sample_rate_);
@@ -751,13 +757,32 @@ void SDRPage::loadSettings() {
             break;
         }
     }
-    const long long rate = sdr.value("sample_rate", 0);
+    // Snap legacy rates (e.g. 1.024 Msps) onto a 240 kHz multiple preset.
+    const uint32_t rate = SampleRate::snap(
+        static_cast<uint32_t>(sdr.value("sample_rate", SampleRate::kDefaultHz)));
     for (int i = 0; i < num_sample_rates_; ++i) {
-        if (static_cast<long long>(sample_rates_[i]) == rate) {
+        if (sample_rates_[i] == rate) {
             rate_index_ = i;
             saved_sample_rate_ = sample_rates_[i];
             break;
         }
+    }
+    if (saved_sample_rate_ == 0) {
+        // Snapped value was not in the preset list (e.g. 1.44 Msps) — pick
+        // the nearest preset so the UI index stays consistent.
+        int best = 0;
+        uint32_t best_dist = std::numeric_limits<uint32_t>::max();
+        for (int i = 0; i < num_sample_rates_; ++i) {
+            const uint32_t d = sample_rates_[i] > rate
+                                  ? sample_rates_[i] - rate
+                                  : rate - sample_rates_[i];
+            if (d < best_dist) {
+                best_dist = d;
+                best = i;
+            }
+        }
+        rate_index_ = best;
+        saved_sample_rate_ = sample_rates_[best];
     }
     std::cout << "SDR settings: loaded " << AppConfig::instance().path()
               << std::endl;
