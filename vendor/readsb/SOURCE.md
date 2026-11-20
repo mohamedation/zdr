@@ -12,5 +12,8 @@ Built for zDR with the RTL-SDR backend enabled. Rebuild with
 | `file` | ELF 64-bit LSB pie executable, ARM aarch64 |
 | License | GPL-3.0-or-later (upstream `COPYING`) |
 
+Runtime shared libs (for packaging / `ldd`): `librtlsdr`, `libncurses`,
+`libtinfo`, `libzstd`, `libz`, `libm`, `libc`.
+
 Debian's `readsb` package often lacks the RTL-SDR backend; this binary is
 installed to `/usr/lib/zdr/readsb` and preferred by the ADSB page.

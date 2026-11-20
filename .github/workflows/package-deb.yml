@@ -32,6 +32,7 @@ jobs:
               build-essential debhelper cmake pkg-config \
               librtlsdr-dev libasound2-dev libpulse-dev libfreetype-dev \
               nlohmann-json3-dev libasound2-plugins \
+              libncurses-dev libzstd-dev zlib1g-dev \
               file ca-certificates
             test -x vendor/readsb/readsb
             file vendor/readsb/readsb | grep -qi aarch64
