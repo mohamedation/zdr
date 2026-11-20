@@ -229,9 +229,9 @@ int main(int argc, char* argv[]) {
     sdr.startCapture();
     std::cout << "SDR capture started" << std::endl;
 
-    // Initialize audio output
+    // Initialize audio output (ZDR_ALSA_DEV from run-zdr, else "default")
     AudioOutput audio_output;
-    if (!audio_output.init("default", 48000, 1)) {
+    if (!audio_output.init(zdrAlsaDevice(), 48000, 1)) {
         std::cerr << "Warning: audio output disabled" << std::endl;
     } else {
         std::cout << "Audio output initialized" << std::endl;

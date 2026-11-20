@@ -15,16 +15,19 @@ bool AudioOutput::init(const char* device_name, uint32_t sample_rate, int channe
     this->sample_rate = sample_rate;
     this->channels = channels;
 
+    if (device_name == nullptr || device_name[0] == '\0') {
+        device_name = zdrAlsaDevice();
+    }
+
     int err;
 
-    // Open PCM device for playback. On images where the ALSA "default"
-    // route is missing, fall back to the usual bridges: the PulseAudio
-    // plugin (libasound2-plugins), PipeWire's own ALSA plugin, then the
-    // codec card directly.
+    // Open PCM device for playback. Prefer the requested device (run-zdr
+    // sets ZDR_ALSA_DEV=pipewire). Fall back to PipeWire, Pulse, then the
+    // codec card when the primary PCM is missing or busy.
     err = snd_pcm_open(&pcm_handle, device_name, SND_PCM_STREAM_PLAYBACK, 0);
     if (err < 0) {
         static const char* const kFallbacks[] = {
-            "pulse", "pipewire", "plughw:1,0", "plughw:0,0",
+            "pipewire", "pulse", "default", "plughw:1,0", "plughw:0,0",
         };
         const int primary_err = err;
         for (const char* alt : kFallbacks) {
@@ -41,6 +44,8 @@ bool AudioOutput::init(const char* device_name, uint32_t sample_rate, int channe
                       << snd_strerror(primary_err) << std::endl;
             return false;
         }
+    } else {
+        std::cout << "Audio device: " << device_name << std::endl;
     }
 
     // Allocate hardware parameters object

@@ -2,7 +2,7 @@
 set -eu
 
 # APPLaunch starts GUI apps in the desktop user session. Reuse that user's
-# PipeWire runtime so ALSA's "default" device reaches the speaker.
+# PipeWire runtime so ALSA's pipewire/default PCMs reach the speaker.
 if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
     for d in /run/user/*; do
         if [ -S "$d/pipewire-0" ]; then
@@ -15,6 +15,15 @@ if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
     export XDG_RUNTIME_DIR
     export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
 fi
+
+# Prefer the PipeWire ALSA PCM. On Cardputer Zero, APPLaunch (and PipeWire)
+# hold the sole hardware codec (hw:1,0 / ES8389) exclusively, so opening
+# raw "default" (when asound.conf routes straight to hw) fails while the
+# launcher is running. Override with ZDR_ALSA_DEV=default on plain desktops.
+export ZDR_ALSA_DEV="${ZDR_ALSA_DEV:-pipewire}"
+
+# Per-process latency hint (avoids relying only on a global quantum poke).
+export PIPEWIRE_LATENCY="${PIPEWIRE_LATENCY:-1024/48000}"
 
 # Keep PipeWire out of its 128-frame low-latency quantum: on the CM0 that
 # causes periodic xruns (audible dropouts).

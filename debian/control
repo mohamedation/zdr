@@ -7,14 +7,15 @@ Standards-Version: 4.1.3
 
 Package: zdr
 Architecture: arm64
-Depends: ${shlibs:Depends}, ${misc:Depends}, libasound2-plugins
-Description: Lightweight SDR interface for Raspberry Pi with audio demodulation
- A graphical SDR application optimized for small SPI displays
- on Raspberry Pi. Supports RTL-SDR devices and provides
- spectrum and waterfall visualization with FM/NFM/AM audio demodulation.
+Depends: ${shlibs:Depends}, ${misc:Depends}, pipewire-alsa, libasound2-plugins
+Description: Lightweight SDR interface for Cardputer Zero / Raspberry Pi
+ A graphical SDR application for small framebuffer displays (Cardputer Zero,
+ Raspberry Pi). Supports RTL-SDR devices with spectrum/waterfall and
+ FM/NFM/AM/USB/LSB demodulation. Audio uses the PipeWire ALSA PCM
+ (pipewire-alsa) so it shares the codec with APPLaunch.
  .
  Features:
   - Real-time spectrum analyzer and waterfall display
-  - FM/NFM/AM audio demodulation
+  - FM/NFM/AM/USB/LSB audio demodulation
   - Volume control and squelch detection
-  - Optimized for Raspberry Pi 3B and newer
+  - Optimized for Cardputer Zero (CM0) and Raspberry Pi

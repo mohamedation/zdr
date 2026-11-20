@@ -2,15 +2,23 @@
 #define AUDIO_OUTPUT_H
 
 #include <alsa/asoundlib.h>
-#include <vector>
+#include <cstdlib>
 #include <cstdint>
+#include <vector>
+
+// ALSA PCM from the environment (set by run-zdr to "pipewire" on Cardputer).
+// Unset/empty → "default" (desktop / bare CLI).
+inline const char* zdrAlsaDevice() {
+    const char* dev = std::getenv("ZDR_ALSA_DEV");
+    return (dev != nullptr && dev[0] != '\0') ? dev : "default";
+}
 
 class AudioOutput {
 public:
     AudioOutput();
     ~AudioOutput();
 
-    bool init(const char* device_name = "default",
+    bool init(const char* device_name = nullptr,
               uint32_t sample_rate = 48000,
               int channels = 1);
     void close();

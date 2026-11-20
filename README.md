@@ -150,58 +150,17 @@ sudo install -m 755 build/zdr /usr/share/APPLaunch/bin/zdr
 ### 3. Install the launcher wrapper
 
 APPLaunch's `Terminal=false` mode does not run a shell, so `-d /dev/fb_lcd`
-cannot be put in `Exec`. The wrapper also reuses the user's PipeWire session
-and keeps the ES8389 DAC at -6 dB (0 dB causes dropouts on this hardware).
+cannot be put in `Exec`. Prefer the shipped wrapper (sets `ZDR_ALSA_DEV=pipewire`,
+PipeWire runtime, ES8389 DAC at -6 dB):
 
 ```bash
-sudo tee /usr/share/APPLaunch/bin/run-zdr >/dev/null <<'EOF'
-#!/bin/sh
-set -eu
-
-# APPLaunch starts apps in the user session; reuse its PipeWire runtime.
-if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
-    for d in /run/user/*; do
-        if [ -S "$d/pipewire-0" ]; then
-            XDG_RUNTIME_DIR="$d"
-            break
-        fi
-    done
-fi
-if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
-    export XDG_RUNTIME_DIR
-    export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
-fi
-
-# 128-frame quantum causes periodic xruns on the CM0.
-if command -v pw-metadata >/dev/null 2>&1; then
-    pw-metadata -n settings 0 clock.force-quantum 1024 >/dev/null 2>&1 || true
-fi
-
-# ES8389 speaker amp drops out at 0 dB; 179 = -6 dB.
-amixer -c 1 cset name='DACL Playback Volume' 179 >/dev/null 2>&1 || true
-amixer -c 1 cset name='DACR Playback Volume' 179 >/dev/null 2>&1 || true
-
-# LCD framebuffer.
-if [ -n "${LV_LINUX_FBDEV_DEVICE:-}" ]; then
-    FB="$LV_LINUX_FBDEV_DEVICE"
-elif [ -e /dev/fb_lcd ]; then
-    FB=/dev/fb_lcd
-else
-    FB=/dev/fb0
-fi
-
-# TCA8418 keyboard.
-KBD=/dev/input/by-path/platform-3f804000.i2c-event
-
-set -- -d "$FB" "$@"
-if [ -e "$KBD" ]; then
-    set -- "$@" -k "$KBD"
-fi
-
-exec /usr/share/APPLaunch/bin/zdr "$@"
-EOF
-sudo chmod 755 /usr/share/APPLaunch/bin/run-zdr
+sudo install -m 755 share/bin/run-zdr /usr/share/APPLaunch/bin/run-zdr
 ```
+
+On Cardputer Zero the hardware PCM is held exclusively by PipeWire/APPLaunch, so
+opening raw `hw:` / a `default` that points at it fails. The wrapper forces the
+`pipewire` ALSA PCM (`pipewire-alsa` package). Override with
+`ZDR_ALSA_DEV=default` on a normal desktop if needed.
 
 ### 4. Install the desktop entry
 
@@ -618,18 +577,21 @@ sudo pkill -f rtl_
 ### No audio
 
 ```bash
-aplay -L | head             # "default" should point at PipeWire
+aplay -L | head             # look for "pipewire" and "default"
 amixer -c 1 sget Speaker
 ```
 
-On a minimal image the ALSA `default` route may be missing (the app then logs
-`Cannot open audio device default`). zDR automatically falls back to
-`pulse` / `pipewire` / the codec device; install `libasound2-plugins` if none of
-them exist:
+From APPLaunch, zDR opens the **`pipewire`** ALSA PCM (`ZDR_ALSA_DEV`, set by
+`run-zdr`). Install the bridge if it is missing:
 
 ```bash
-sudo apt-get install -y libasound2-plugins
+sudo apt-get install -y pipewire-alsa libasound2-plugins
 ```
+
+If `default` is wired straight to `hw:1,0` while APPLaunch holds that device
+exclusively, opening `default` fails; the `pipewire` PCM is the correct path.
+Bare CLI without the wrapper still tries `default`, then falls back to
+`pipewire` / `pulse` / `plughw`.
 
 The wrapper sets `DACL/DACR Playback Volume` to 179 (-6 dB); 0 dB causes the
 ES8389 amplifier to drop out.

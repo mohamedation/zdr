@@ -6,9 +6,9 @@
 /**
  * BeepPlayer - tiny sine-tone player for UI feedback.
  *
- * Opens the default ALSA device lazily on the first beep and is closed when
- * the owning page exits, so it never holds the speaker while the SDR audio
- * path is active.
+ * Opens the ALSA device from ZDR_ALSA_DEV (or "default") lazily on the first
+ * beep and is closed when the owning page exits, so it never holds the
+ * speaker while the SDR audio path is active.
  */
 class BeepPlayer {
 public:
