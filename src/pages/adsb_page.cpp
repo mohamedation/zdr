@@ -26,6 +26,14 @@ std::string findReadsbPath() {
 }
 }  // namespace
 
+// Zoom presets for the full-screen radar scope (km).
+const float ADSBPage::kRadarScopeRanges[] = {
+    10.0f, 20.0f, 30.0f, 50.0f, 75.0f, 100.0f, 150.0f, 200.0f
+};
+const int ADSBPage::kNumRadarScopeRanges =
+    static_cast<int>(sizeof(ADSBPage::kRadarScopeRanges) /
+                     sizeof(ADSBPage::kRadarScopeRanges[0]));
+
 ADSBPage::ADSBPage(Framebuffer& fb, SDRController& sdr, ADSBUIRenderer& ui, RadarUIRenderer& radar_ui)
     : fb_(fb), sdr_(sdr), ui_(ui), radar_ui_(radar_ui),
       view_mode_(VIEW_LIST),
@@ -39,6 +47,8 @@ ADSBPage::ADSBPage(Framebuffer& fb, SDRController& sdr, ADSBUIRenderer& ui, Rada
       blink_timer_(0.0f),
       blink_state_(true),
       last_sweep_sector_(-1),
+      radar_scope_range_(50.0f),
+      radar_scope_range_index_(3),  // 50 km
       imu_enabled_(true),
       heading_up_(true),
       radar_rotation_(0.0f),
@@ -182,35 +192,18 @@ void ADSBPage::update(float delta_time) {
         }
     }
 
-    // Update radar sweep angle if in radar view
-    if (view_mode_ == VIEW_RADAR) {
-        sweep_angle_ += sweep_speed_ * delta_time;
-        bool wrapped = false;
-        if (sweep_angle_ >= 360.0f) {
-            sweep_angle_ -= 360.0f;
-            wrapped = true;
-            // One sonar ping per revolution.
-            beeps_.play(880.0f, 90, 0.20f);
-            last_sweep_sector_ = -1;
-        }
-        if (!wrapped) {
-            // Quiet tick every 90 degrees while the sweep turns.
-            const int sector = static_cast<int>(sweep_angle_ / 90.0f);
-            if (sector != last_sweep_sector_) {
-                last_sweep_sector_ = sector;
-                beeps_.play(1568.0f, 12, 0.045f);
-            }
-        }
-
-        // Compass heading and the smoothed rose rotation.
+    // Radar views: compass / selection only (cosmetic sweep beam removed).
+    if (isRadarView()) {
         if (imu_enabled_) imu_.update(delta_time);
         updateRadarRotation(delta_time);
 
-        // Update blink timer (blink every 0.5 seconds)
-        blink_timer_ += delta_time;
-        if (blink_timer_ >= 0.5f) {
-            blink_timer_ -= 0.5f;
-            blink_state_ = !blink_state_;
+        // Blink only on the split radar (scope keeps selection solid amber).
+        if (view_mode_ == VIEW_RADAR) {
+            blink_timer_ += delta_time;
+            if (blink_timer_ >= 0.5f) {
+                blink_timer_ -= 0.5f;
+                blink_state_ = !blink_state_;
+            }
         }
     }
 
@@ -259,6 +252,9 @@ void ADSBPage::update(float delta_time) {
 
     // Update aircraft list for display
     updateAircraftList();
+    if (view_mode_ == VIEW_RADAR_SCOPE) {
+        ensureRadarScopeSelection();
+    }
 
     // Render current view
     renderCurrentView();
@@ -307,6 +303,117 @@ void ADSBPage::openRadarView() {
     }
 }
 
+void ADSBPage::openRadarScopeView() {
+    if (observer_position_set_) {
+        view_mode_ = VIEW_RADAR_SCOPE;
+        sweep_angle_ = 0.0f;
+        last_sweep_sector_ = -1;
+        // Seed zoom near the current traffic envelope, then snap to a preset.
+        const float auto_range = calculateMaxRange();
+        int best = 0;
+        float best_dist = std::fabs(kRadarScopeRanges[0] - auto_range);
+        for (int i = 1; i < kNumRadarScopeRanges; ++i) {
+            const float d = std::fabs(kRadarScopeRanges[i] - auto_range);
+            if (d < best_dist) {
+                best_dist = d;
+                best = i;
+            }
+        }
+        radar_scope_range_index_ = best;
+        radar_scope_range_ = kRadarScopeRanges[best];
+        ensureRadarScopeSelection();
+        std::cout << "ADSBPage: Switching to radar scope ("
+                  << radar_scope_range_ << " km)" << std::endl;
+    } else {
+        settings_return_view_ = VIEW_RADAR_SCOPE;
+        view_mode_ = VIEW_SETTINGS;
+        settings_selected_item_ = 0;
+        lat_input_.clear();
+        lon_input_.clear();
+        std::cout << "ADSBPage: Observer position not set, opening settings"
+                  << std::endl;
+    }
+}
+
+void ADSBPage::collectRadarVisibleIndices(std::vector<int>& out) const {
+    out.clear();
+    for (size_t i = 0; i < aircraft_list_.size(); ++i) {
+        const auto& ac = aircraft_list_[i];
+        if (!ac.position_valid || ac.distance <= 0.0f) continue;
+        if (ac.distance > radar_scope_range_) continue;
+        out.push_back(static_cast<int>(i));
+    }
+}
+
+void ADSBPage::ensureRadarScopeSelection() {
+    std::vector<int> visible;
+    collectRadarVisibleIndices(visible);
+    if (visible.empty()) {
+        selected_index_ = -1;
+        selected_icao_ = 0;
+        return;
+    }
+    for (int idx : visible) {
+        if (idx == selected_index_) {
+            selected_icao_ = aircraft_list_[idx].icao_addr;
+            return;
+        }
+    }
+    // Prefer keeping the same ICAO if it is still in view under a new index.
+    if (selected_icao_ != 0) {
+        for (int idx : visible) {
+            if (aircraft_list_[idx].icao_addr == selected_icao_) {
+                selected_index_ = idx;
+                return;
+            }
+        }
+    }
+    selected_index_ = visible.front();
+    selected_icao_ = aircraft_list_[selected_index_].icao_addr;
+}
+
+void ADSBPage::cycleRadarScopeSelection(int direction) {
+    std::vector<int> visible;
+    collectRadarVisibleIndices(visible);
+    if (visible.empty()) {
+        selected_index_ = -1;
+        selected_icao_ = 0;
+        return;
+    }
+
+    int pos = -1;
+    for (size_t i = 0; i < visible.size(); ++i) {
+        if (visible[i] == selected_index_) {
+            pos = static_cast<int>(i);
+            break;
+        }
+    }
+    if (pos < 0) {
+        selected_index_ = visible.front();
+    } else {
+        const int n = static_cast<int>(visible.size());
+        pos = (pos + direction) % n;
+        if (pos < 0) pos += n;
+        selected_index_ = visible[pos];
+    }
+    selected_icao_ = aircraft_list_[selected_index_].icao_addr;
+    beeps_.play(1000.0f, 15, 0.06f);
+}
+
+void ADSBPage::zoomRadarScope(int direction) {
+    int next = radar_scope_range_index_ + direction;
+    if (next < 0 || next >= kNumRadarScopeRanges) {
+        beeps_.play(220.0f, 40, 0.08f);
+        return;
+    }
+    radar_scope_range_index_ = next;
+    radar_scope_range_ = kRadarScopeRanges[radar_scope_range_index_];
+    ensureRadarScopeSelection();
+    beeps_.play(direction < 0 ? 1320.0f : 880.0f, 20, 0.06f);
+    std::cout << "ADSBPage: Radar scope range " << radar_scope_range_
+              << " km" << std::endl;
+}
+
 bool ADSBPage::handleInput(AppKeyCode key) {
     if (help_visible_) {
         handleHelpInput(key);
@@ -325,6 +432,8 @@ bool ADSBPage::handleInput(AppKeyCode key) {
         handleDetailInput(key);
     } else if (view_mode_ == VIEW_RADAR) {
         handleRadarInput(key);
+    } else if (view_mode_ == VIEW_RADAR_SCOPE) {
+        handleRadarScopeInput(key);
     } else if (view_mode_ == VIEW_SETTINGS) {
         handleSettingsInput(key);
     }
@@ -349,7 +458,7 @@ void ADSBPage::handleListInput(AppKeyCode key) {
                 selected_index_++;
                 beeps_.play(1000.0f, 15, 0.06f);
                 // Adjust scroll if needed
-                int max_visible = 10;  // MAX_VISIBLE_ROWS from renderer
+                const int max_visible = 8;  // ADSBUIRenderer::MAX_VISIBLE_ROWS
                 if (selected_index_ >= scroll_offset_ + max_visible) {
                     scroll_offset_ = selected_index_ - max_visible + 1;
                 }
@@ -667,6 +776,22 @@ void ADSBPage::renderCurrentView() {
                                      observer_lat_, observer_lon_,
                                      selected_index_, scroll_offset_,
                                      blink_state_, radar_rotation_);
+
+    } else if (view_mode_ == VIEW_RADAR_SCOPE) {
+        fb_.clear(COLOR_RADAR_BG);
+
+        std::vector<int> visible;
+        collectRadarVisibleIndices(visible);
+        const bool compass_active = imu_enabled_ && imu_.hasHeading();
+        radar_ui_.renderScopeStatusBar(
+            static_cast<int>(visible.size()),
+            static_cast<int>(aircraft_list_.size()),
+            radar_scope_range_,
+            compass_active, imu_.heading(),
+            heading_up_ && compass_active);
+        radar_ui_.renderRadarScope(aircraft_list_, sweep_angle_,
+                                   radar_scope_range_, selected_index_,
+                                   radar_rotation_);
 
     } else if (view_mode_ == VIEW_SETTINGS) {
         // Render settings menu
@@ -1065,7 +1190,7 @@ void ADSBPage::handleRadarInput(AppKeyCode key) {
                 selected_index_++;
                 beeps_.play(1000.0f, 15, 0.06f);
                 // Adjust scroll if needed
-                int max_visible = 8;  // MAX_VISIBLE_ROWS - 1 (header row)
+                const int max_visible = 8;  // split-radar list visible rows
                 if (selected_index_ >= scroll_offset_ + max_visible) {
                     scroll_offset_ = selected_index_ - max_visible + 1;
                 }
@@ -1087,10 +1212,12 @@ void ADSBPage::handleRadarInput(AppKeyCode key) {
             break;
 
         case APPKEY_ENTER:
+            // Enter continues the cycle: split radar -> full-screen scope.
+            openRadarScopeView();
+            break;
+
         case APPKEY_R:
-            // Enter continues the cycle: radar -> list.
-            view_mode_ = VIEW_LIST;
-            std::cout << "ADSBPage: Returning to list view from radar" << std::endl;
+            // Stay on split radar / return from elsewhere via R.
             break;
 
         case APPKEY_L:
@@ -1174,6 +1301,116 @@ void ADSBPage::handleRadarInput(AppKeyCode key) {
                 gain_ -= 10;
                 sdr_.setGain(gain_);
                 std::cout << "ADSBPage: Gain = " << gain_/10 << " dB" << std::endl;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void ADSBPage::handleRadarScopeInput(AppKeyCode key) {
+    switch (key) {
+        case APPKEY_UP:
+            cycleRadarScopeSelection(-1);
+            break;
+
+        case APPKEY_DOWN:
+            cycleRadarScopeSelection(1);
+            break;
+
+        case APPKEY_LEFT:
+        case APPKEY_ZOOM:
+            // Zoom in (smaller range) — only in-view craft stay selectable.
+            zoomRadarScope(-1);
+            break;
+
+        case APPKEY_RIGHT:
+            // Zoom out (larger range).
+            zoomRadarScope(1);
+            break;
+
+        case APPKEY_ENTER:
+            // Continue the page cycle: scope -> list.
+            view_mode_ = VIEW_LIST;
+            if (selected_index_ < 0) selected_index_ = 0;
+            std::cout << "ADSBPage: Returning to list view from radar scope"
+                      << std::endl;
+            break;
+
+        case APPKEY_R:
+            // Jump back to the split radar with list.
+            openRadarView();
+            break;
+
+        case APPKEY_L:
+            settings_return_view_ = VIEW_RADAR_SCOPE;
+            view_mode_ = VIEW_SETTINGS;
+            settings_selected_item_ = 0;
+            lat_input_.clear();
+            lon_input_.clear();
+            std::cout << "ADSBPage: Opening settings menu from radar scope"
+                      << std::endl;
+            break;
+
+        case APPKEY_I:
+            if (!imu_.available() || !imu_enabled_) {
+                beeps_.play(220.0f, 80, 0.10f);
+                break;
+            }
+            heading_up_ = !heading_up_;
+            saveImuConfig();
+            beeps_.play(heading_up_ ? 1320.0f : 880.0f, 30, 0.08f);
+            break;
+
+        case APPKEY_0:
+            if (!imu_.available() || !imu_enabled_ || !imu_.hasHeading()) {
+                beeps_.play(220.0f, 80, 0.10f);
+                break;
+            }
+            {
+                float offset = std::fmod(imu_.offsetDeg() - imu_.heading(),
+                                         360.0f);
+                if (offset < 0.0f) offset += 360.0f;
+                imu_.setOffsetDeg(offset);
+                imu_.resetSmoothing();
+                saveImuConfig();
+                beeps_.play(1760.0f, 40, 0.08f);
+            }
+            break;
+
+        case APPKEY_SCREENSHOT: {
+            const std::string path = makeScreenshotPath();
+            if (fb_.saveScreenshot(path.c_str())) {
+                std::cout << "Screenshot saved: " << path << std::endl;
+            } else {
+                std::cerr << "Screenshot failed" << std::endl;
+            }
+            break;
+        }
+
+        case APPKEY_G:
+            if (gain_ < 0) {
+                gain_ = 0;
+                sdr_.setAutoGain(false);
+                sdr_.setGain(gain_);
+            } else {
+                gain_ = -1;
+                sdr_.setAutoGain(true);
+            }
+            break;
+
+        case APPKEY_PLUS:
+            if (gain_ >= 0 && gain_ < 490) {
+                gain_ += 10;
+                sdr_.setGain(gain_);
+            }
+            break;
+
+        case APPKEY_MINUS:
+            if (gain_ >= 0 && gain_ > 0) {
+                gain_ -= 10;
+                sdr_.setGain(gain_);
             }
             break;
 

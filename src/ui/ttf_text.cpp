@@ -6,9 +6,14 @@
 #include <cstring>
 
 bool loadDefaultUiFont(TtfText& font, int pixel_size) {
+    // Debian/Ubuntu under truetype/; Arch under TTF/.
     static const char* kFonts[] = {
+        "/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
         "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf",
     };
     for (const char* path : kFonts) {
@@ -52,6 +57,8 @@ bool TtfText::load(const char* path, int pixel_size) {
 
     pixel_size_ = pixel_size;
     height_ = static_cast<int>(face_->size->metrics.height >> 6);
+    ascender_ = static_cast<int>(face_->size->metrics.ascender >> 6);
+    if (ascender_ <= 0) ascender_ = pixel_size_;
     cache_.clear();
     return true;
 }
@@ -118,4 +125,9 @@ void TtfText::draw(Framebuffer& fb, int x, int baseline, const char* text,
         }
         pen += g->advance;
     }
+}
+
+void TtfText::drawTopLeft(Framebuffer& fb, int x, int y, const char* text,
+                          uint16_t color, uint8_t alpha) const {
+    draw(fb, x, y + ascender_, text, color, alpha);
 }

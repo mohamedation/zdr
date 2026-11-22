@@ -12,6 +12,8 @@ public:
     ~Framebuffer();
 
     bool init();
+    //Software-only buffer forUI previews.
+    bool initSoft(int w, int h);
     void clear(uint16_t color = 0x0000);
     void drawPixel(int x, int y, uint16_t color);
     // Alpha-blend a colour over the existing back-buffer pixel (0.0 .. 1.0).
@@ -76,19 +78,21 @@ private:
 #define COLOR_SELECTED    0x2945  // Selected item background (dark blue-gray)
 
 // ADSB page colors
-#define COLOR_ADSB_STATUSBAR_BG   0x1B53  // #3365A6 蓝色状态栏背景
-#define COLOR_ADSB_STATUSBAR_TEXT 0xFEE7  // #FDE84F 黄色状态栏文字
+#define COLOR_ADSB_STATUSBAR_BG   0x10A4  // #104A52 deep teal bar
+#define COLOR_ADSB_STATUSBAR_TEXT 0x6EFE  // #6EDEF5
+#define COLOR_ADSB_TEXT           0x6EFE  // #6EDEF5 body / headers
+#define COLOR_ADSB_SELECTED       0xF541  // #F6A90A highlight
 
 // PFD artificial horizon colors
 #define COLOR_SKY_BLUE    0x54BF  // #5599FF bright sky blue
 #define COLOR_EARTH_BROWN 0xCC60  // #C98C00 earth brown/tan
 
 // Radar page colors
-#define COLOR_RADAR_BG        0x0841  // #081020 Dark blue-black background
-#define COLOR_RADAR_GRID      0x2945  // #294580 Dim cyan for range rings
-#define COLOR_RADAR_SWEEP     0x07E0  // #00FF00 Bright green for sweep line
-#define COLOR_RADAR_BLIP      0xFFFF  // #FFFFFF White for aircraft blips
-#define COLOR_RADAR_SELECTED  0x001F  // #0000FF Blue for selected aircraft
-#define COLOR_RADAR_TEXT      0x9E9F  // #9DB4FF Bright text for labels
+#define COLOR_RADAR_BG        0x0042  // #040810 deep background
+#define COLOR_RADAR_GRID      0x336F  // dim #6EDEF5 for inner rings / rules
+#define COLOR_RADAR_SWEEP     0x6EFE  // #6EDEF5 outer ring / ticks (was green)
+#define COLOR_RADAR_BLIP      0x6EFE  // #6EDEF5 aircraft
+#define COLOR_RADAR_SELECTED  0xF541  // #F6A90A selected aircraft
+#define COLOR_RADAR_TEXT      0x6EFE  // #6EDEF5 labels
 
 #endif // FRAMEBUFFER_H

@@ -1,4 +1,5 @@
 #include "ui/adsb_ui_renderer.h"
+#include "ui/ui_text.h"
 #include "font.h"
 #include <cstdio>
 #include <cstring>
@@ -41,74 +42,34 @@ ADSBUIRenderer::ADSBUIRenderer(Framebuffer& fb)
 ADSBUIRenderer::~ADSBUIRenderer() {
 }
 
-// 8x16 font overrides for ADSB page
+// ADSB tables / labels use UiText Mono and Caption styles.
 void ADSBUIRenderer::drawChar(int x, int y, char c, uint16_t color) {
     if (c < 0x20 || c > 0x7E) return;
-
-    const uint8_t* glyph = font8x16[c - 0x20];
-
-    for (int row = 0; row < FONT_8X16_HEIGHT; row++) {
-        uint8_t line = glyph[row];
-        for (int col = 0; col < FONT_8X16_WIDTH; col++) {
-            if (line & (0x80 >> col)) {
-                fb_.drawPixel(x + col, y + row, color);
-            }
-        }
-    }
+    char buf[2] = {c, '\0'};
+    uiText().draw(fb_, x, y, buf, TextStyle::Mono, color);
 }
 
 void ADSBUIRenderer::drawText(int x, int y, const char* text, uint16_t color) {
     if (!text) return;
-
-    int cursor_x = x;
-    while (*text) {
-        drawChar(cursor_x, y, *text, color);
-        cursor_x += FONT_8X16_WIDTH + 1; // 8px char + 1px spacing
-        text++;
-    }
+    uiText().draw(fb_, x, y, text, TextStyle::Mono, color);
 }
 
 void ADSBUIRenderer::drawSmallText(int x, int y, const char* text, uint16_t color) {
     if (!text) return;
-    int cursor_x = x;
-    while (*text) {
-        if (*text >= 0x20 && *text <= 0x7E) {
-            const uint8_t* glyph = font6x8[*text - 0x20];
-            for (int row = 0; row < FONT_6X8_HEIGHT; row++) {
-                uint8_t line = glyph[row];
-                for (int col = 0; col < FONT_6X8_WIDTH; col++) {
-                    if (line & (0x80 >> col)) {
-                        fb_.drawPixel(cursor_x + col, y + row, color);
-                    }
-                }
-            }
-        }
-        cursor_x += FONT_6X8_WIDTH + 1;
-        text++;
-    }
+    uiText().draw(fb_, x, y, text, TextStyle::Caption, color);
 }
 
 void ADSBUIRenderer::drawTextBg(int x, int y, const char* text, uint16_t fg, uint16_t bg) {
     if (!text) return;
-
-    int text_len = 0;
-    const char* p = text;
-    while (*p++) text_len++;
-
-    fb_.fillRect(x, y, text_len * (FONT_8X16_WIDTH + 1), FONT_8X16_HEIGHT, bg);
+    const int w = getTextWidth(text);
+    const int h = uiText().lineHeight(TextStyle::Mono);
+    fb_.fillRect(x, y, w, h, bg);
     drawText(x, y, text, fg);
 }
 
 int ADSBUIRenderer::getTextWidth(const char* text) const {
     if (!text) return 0;
-    return strlen(text) * (FONT_8X16_WIDTH + 1);
-}
-
-void ADSBUIRenderer::ensureUiFont() const {
-    if (!ui_font_loaded_) {
-        ui_font_loaded_ = true;
-        loadDefaultUiFont(ui_font_, 12);
-    }
+    return uiText().width(text, TextStyle::Mono);
 }
 
 void ADSBUIRenderer::renderStatusBar(int aircraft_count,
@@ -122,13 +83,8 @@ void ADSBUIRenderer::renderStatusBar(int aircraft_count,
     snprintf(status, sizeof(status), "AC:%d Msg:%u %.0f/s 1090MHz",
              aircraft_count, message_count, message_rate);
 
-    ensureUiFont();
-    if (ui_font_.valid()) {
-        ui_font_.draw(fb_, 2, STATUS_BAR_Y + 12, status,
-                      COLOR_ADSB_STATUSBAR_TEXT);
-    } else {
-        drawText(2, STATUS_BAR_Y + 2, status, COLOR_ADSB_STATUSBAR_TEXT);
-    }
+    uiText().draw(fb_, 2, STATUS_BAR_Y + 2, status, TextStyle::Body,
+                  COLOR_ADSB_STATUSBAR_TEXT);
 }
 
 void ADSBUIRenderer::renderColumnHeaders() {
@@ -139,13 +95,13 @@ void ADSBUIRenderer::renderColumnHeaders() {
     drawHLine(0, HEADER_Y + HEADER_H - 1, 320, COLOR_GRID);
 
     // Draw column headers
-    drawText(COL_ICAO_X, HEADER_Y + 1, "ICAO", COLOR_TEXT);
-    drawText(COL_CALL_X, HEADER_Y + 1, "Call", COLOR_TEXT);
-    drawText(COL_ALT_X, HEADER_Y + 1, "Alt", COLOR_TEXT);
-    drawText(COL_SPD_X, HEADER_Y + 1, "Spd", COLOR_TEXT);
-    drawText(COL_HDG_X, HEADER_Y + 1, "Hdg", COLOR_TEXT);
-    drawText(COL_DIST_X, HEADER_Y + 1, "Dist", COLOR_TEXT);
-    drawText(COL_SEEN_X, HEADER_Y + 1, "Seen", COLOR_TEXT);
+    drawText(COL_ICAO_X, HEADER_Y + 1, "ICAO", COLOR_ADSB_TEXT);
+    drawText(COL_CALL_X, HEADER_Y + 1, "Call", COLOR_ADSB_TEXT);
+    drawText(COL_ALT_X, HEADER_Y + 1, "Alt", COLOR_ADSB_TEXT);
+    drawText(COL_SPD_X, HEADER_Y + 1, "Spd", COLOR_ADSB_TEXT);
+    drawText(COL_HDG_X, HEADER_Y + 1, "Hdg", COLOR_ADSB_TEXT);
+    drawText(COL_DIST_X, HEADER_Y + 1, "Dist", COLOR_ADSB_TEXT);
+    drawText(COL_SEEN_X, HEADER_Y + 1, "Seen", COLOR_ADSB_TEXT);
 }
 
 void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircraft,
@@ -167,40 +123,47 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
 
         // Highlight selected row
         if (is_selected) {
-            fb_.fillRect(0, row_y, 320, ROW_HEIGHT, COLOR_SELECTED);
+            fb_.fillRect(0, row_y, 320, ROW_HEIGHT, COLOR_ADSB_SELECTED);
         }
 
-        uint16_t text_color = is_selected ? COLOR_TEXT_BRIGHT : COLOR_TEXT;
+        uint16_t text_color = is_selected ? COLOR_BLACK : COLOR_ADSB_TEXT;
 
         // Format and draw each column
         char buffer[16];
 
+        const int text_y = row_y + 2;
+
         // ICAO address (6 hex digits)
         snprintf(buffer, sizeof(buffer), "%06X", ac.icao_addr);
-        drawText(COL_ICAO_X, row_y + 2, buffer, text_color);
+        drawText(COL_ICAO_X, text_y, buffer, text_color);
 
-        // Callsign (7 chaned) with white background and black text
+        // Callsign with amber chip when not the selected row
         if (ac.callsign[0] != '\0') {
-            // Calculate actual callsign length (without trailing spaces)
             int callsign_len = strlen(ac.callsign);
             while (callsign_len > 0 && ac.callsign[callsign_len - 1] == ' ') {
                 callsign_len--;
             }
 
             if (callsign_len > 0) {
-                // Draw white background only for actual callsign characters
-                fb_.fillRect(COL_CALL_X, row_y + 2, callsign_len * 9, 16, COLOR_WHITE);
-                // Draw callsign without padding
                 char callsign_buf[9];
-                snprintf(callsign_buf, sizeof(callsign_buf), "%.*s", callsign_len, ac.callsign);
-                drawText(COL_CALL_X, row_y + 2, callsign_buf, COLOR_BLACK);
+                snprintf(callsign_buf, sizeof(callsign_buf), "%.*s", callsign_len,
+                         ac.callsign);
+                if (!is_selected) {
+                    const int chip_w = uiText().width(callsign_buf, TextStyle::Mono);
+                    const int chip_h = uiText().lineHeight(TextStyle::Mono);
+                    fb_.fillRect(COL_CALL_X, text_y, chip_w, chip_h,
+                                 COLOR_ADSB_SELECTED);
+                    drawText(COL_CALL_X, text_y, callsign_buf, COLOR_BLACK);
+                } else {
+                    drawText(COL_CALL_X, text_y, callsign_buf, COLOR_BLACK);
+                }
             } else {
                 snprintf(buffer, sizeof(buffer), "-------");
-                drawText(COL_CALL_X, row_y + 2, buffer, text_color);
+                drawText(COL_CALL_X, text_y, buffer, text_color);
             }
         } else {
             snprintf(buffer, sizeof(buffer), "-------");
-            drawText(COL_CALL_X, row_y + 2, buffer, text_color);
+            drawText(COL_CALL_X, text_y, buffer, text_color);
         }
 
         // Altitude (5 chars, right-aligned)
@@ -209,7 +172,7 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
         } else {
             snprintf(buffer, sizeof(buffer), "    -");
         }
-        drawText(COL_ALT_X, row_y + 2, buffer, text_color);
+        drawText(COL_ALT_X, text_y, buffer, text_color);
 
         // Speed (3 chars, right-aligned)
         if (ac.velocity_valid && ac.speed > 0) {
@@ -217,7 +180,7 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
         } else {
             snprintf(buffer, sizeof(buffer), "  -");
         }
-        drawText(COL_SPD_X, row_y + 2, buffer, text_color);
+        drawText(COL_SPD_X, text_y, buffer, text_color);
 
         // Heading (3 chars, right-aligned)
         if (ac.velocity_valid && ac.heading >= 0) {
@@ -225,17 +188,17 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
         } else {
             snprintf(buffer, sizeof(buffer), "  -");
         }
-        drawText(COL_HDG_X, row_y + 2, buffer, text_color);
+        drawText(COL_HDG_X, text_y, buffer, text_color);
 
         // Distance (5 chars with unit)
         formatDistance(ac.distance, buffer);
-        drawText(COL_DIST_X, row_y + 2, buffer, text_color);
+        drawText(COL_DIST_X, text_y, buffer, text_color);
 
         // Time since last seen (4 chars)
         time_t now = time(nullptr);
         time_t elapsed = now - ac.last_seen;
         formatTimeSince(elapsed, buffer);
-        drawText(COL_SEEN_X, row_y + 2, buffer, text_color);
+        drawText(COL_SEEN_X, text_y, buffer, text_color);
     }
 
     // Draw separator line at bottom of list
@@ -253,13 +216,8 @@ void ADSBUIRenderer::renderStatistics(uint32_t total_messages,
     snprintf(stats, sizeof(stats), "Total:%u CRC:%u Range:%.0fkm",
              total_messages, crc_errors, max_range);
 
-    ensureUiFont();
-    if (ui_font_.valid()) {
-        ui_font_.draw(fb_, 2, STATS_BAR_Y + 14, stats,
-                      COLOR_ADSB_STATUSBAR_TEXT);
-    } else {
-        drawText(2, STATS_BAR_Y + 2, stats, COLOR_ADSB_STATUSBAR_TEXT);
-    }
+    uiText().draw(fb_, 2, STATS_BAR_Y + 2, stats, TextStyle::Body,
+                  COLOR_ADSB_STATUSBAR_TEXT);
 }
 
 void ADSBUIRenderer::renderAircraftDetail(const AircraftState& aircraft,
@@ -334,18 +292,13 @@ void ADSBUIRenderer::renderAircraftDetail(const AircraftState& aircraft,
     fb_.fillRect(INFO_X, INFO_Y, INFO_W, INFO_H, COLOR_BG_DARK);
 
     // Render scrollable text on right side
-    ensureUiFont();
-    const int LINE_HEIGHT = 15;
+    const int LINE_HEIGHT = uiText().lineHeight(TextStyle::Body) + 3;
     int y = INFO_Y + 2 - scroll_offset;
 
     for (size_t i = 0; i < lines.size(); i++) {
         if (y + LINE_HEIGHT > INFO_Y && y < STATS_BAR_Y) {
-            if (ui_font_.valid()) {
-                ui_font_.draw(fb_, INFO_X + 5, y + 11, lines[i].c_str(),
-                              COLOR_TEXT_BRIGHT);
-            } else {
-                drawText(INFO_X + 5, y, lines[i].c_str(), COLOR_TEXT_BRIGHT);
-            }
+            uiText().draw(fb_, INFO_X + 5, y, lines[i].c_str(), TextStyle::Body,
+                          COLOR_ADSB_TEXT);
         }
         y += LINE_HEIGHT;
     }
@@ -771,8 +724,9 @@ void ADSBUIRenderer::renderPFD(const AircraftState& aircraft, int x, int y, int 
     
     // Callsign at top
     if (aircraft.callsign[0] != '\0') {
-        int text_w = strlen(aircraft.callsign) * 9;  // 8px char + 1px spacing
-        drawText(horizon_cx - text_w/2, y + 2, aircraft.callsign, COLOR_TEXT_BRIGHT);
+        const int text_w = uiText().width(aircraft.callsign, TextStyle::Title);
+        uiText().draw(fb_, horizon_cx - text_w / 2, y + 2, aircraft.callsign,
+                      TextStyle::Title, COLOR_ADSB_TEXT);
     }
 }
 
@@ -817,7 +771,7 @@ void ADSBUIRenderer::renderKeyHelp() {
     const int py = (170 - panel_h) / 2;
     drawRoundedPanel(px, py, panel_w, panel_h, radius, COLOR_DIALOG_BG, 0.85f);
 
-    drawSmallText(px + 12, py + 9, "KEYS", COLOR_YELLOW);
+    drawSmallText(px + 12, py + 9, "KEYS", COLOR_ADSB_SELECTED);
     drawSmallText(px + 60, py + 9, "H close   <> settings",
                   COLOR_TEXT_DIM);
 
@@ -825,9 +779,9 @@ void ADSBUIRenderer::renderKeyHelp() {
     static const Row rows[] = {
         {"TAB",        "PAGE MENU"},
         {"UP/DOWN",    "SELECT AIRCRAFT"},
-        {"LEFT/RIGHT", "PAGE 5 ROWS"},
-        {"ENTER",      "LIST>DETAIL>RADAR"},
-        {"R",          "RADAR VIEW"},
+        {"LEFT/RIGHT", "PAGE / ZOOM SCOPE"},
+        {"ENTER",      "LIST>DET>RADAR>SCOPE"},
+        {"R",          "RADAR / SCOPE->RADAR"},
         {"I / 0",      "COMPASS UP / NORTH"},
         {"L",          "POSITION SETTINGS"},
         {"H",          "HELP / SETTINGS"},
@@ -842,8 +796,8 @@ void ADSBUIRenderer::renderKeyHelp() {
     int y = py + 24;
     for (int i = 0; i < count; ++i) {
         const auto& r = rows[i];
-        drawSmallText(px + 14, y, r.key, COLOR_YELLOW);
-        drawSmallText(px + 92, y, r.action, COLOR_WHITE);
+        drawSmallText(px + 14, y, r.key, COLOR_ADSB_SELECTED);
+        drawSmallText(px + 92, y, r.action, COLOR_ADSB_TEXT);
         y += step;
     }
 }
@@ -864,7 +818,7 @@ void ADSBUIRenderer::renderSettingsOverview(double lat, double lon,
     const int py = (170 - panel_h) / 2;
     drawRoundedPanel(px, py, panel_w, panel_h, radius, COLOR_DIALOG_BG, 0.85f);
 
-    drawSmallText(px + 12, py + 9, "SETTINGS", COLOR_YELLOW);
+    drawSmallText(px + 12, py + 9, "SETTINGS", COLOR_ADSB_SELECTED);
     drawSmallText(px + 80, py + 9, "H close   <> keys", COLOR_TEXT_DIM);
 
     char lat_s[32];
@@ -883,12 +837,13 @@ void ADSBUIRenderer::renderSettingsOverview(double lat, double lon,
     for (int i = 0; i < 3; ++i) {
         const int y = py + 40 + i * 26;
         if (i == selected) {
-            fb_.fillRect(px + 6, y - 6, panel_w - 12, 16, COLOR_SELECTED);
-            drawSmallText(px + 10, y, ">", COLOR_YELLOW);
+            fb_.fillRect(px + 6, y - 6, panel_w - 12, 16, COLOR_ADSB_SELECTED);
+            drawSmallText(px + 10, y, ">", COLOR_BLACK);
         }
         drawSmallText(px + 18, y, labels[i],
-                      i == selected ? COLOR_WHITE : COLOR_TEXT_BRIGHT);
-        drawSmallText(px + 150, y, values[i], COLOR_YELLOW);
+                      i == selected ? COLOR_BLACK : COLOR_ADSB_TEXT);
+        drawSmallText(px + 150, y, values[i],
+                      i == selected ? COLOR_BLACK : COLOR_ADSB_SELECTED);
     }
 
     char src_line[32];

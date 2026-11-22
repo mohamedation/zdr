@@ -100,6 +100,7 @@ set(SOURCES
     src/ui/adsb_ui_renderer.cpp
     src/ui/radar_ui_renderer.cpp
     src/ui/ttf_text.cpp
+    src/ui/ui_text.cpp
 
     # Hardware
     src/framebuffer.cpp

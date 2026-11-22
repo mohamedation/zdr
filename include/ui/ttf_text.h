@@ -32,12 +32,17 @@ public:
     bool valid() const { return face_ != nullptr; }
     int pixelSize() const { return pixel_size_; }
     int lineHeight() const { return height_; }
+    int ascender() const { return ascender_; }
 
     int textWidth(const char* text) const;
 
     /** Draw text with its baseline at `baseline`. */
     void draw(Framebuffer& fb, int x, int baseline, const char* text,
               uint16_t color, uint8_t alpha = 255) const;
+
+    /** Draw text with the top of the em-box at `y` (UI-friendly). */
+    void drawTopLeft(Framebuffer& fb, int x, int y, const char* text,
+                     uint16_t color, uint8_t alpha = 255) const;
 
 private:
     struct Glyph {
@@ -55,6 +60,7 @@ private:
     FT_Face face_ = nullptr;
     int pixel_size_ = 0;
     int height_ = 0;
+    int ascender_ = 0;
     mutable std::unordered_map<unsigned char, Glyph> cache_;
 };
 

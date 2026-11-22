@@ -2,7 +2,6 @@
 #define ADSB_UI_RENDERER_H
 
 #include "ui/base_ui_renderer.h"
-#include "ui/ttf_text.h"
 #include "adsb/adsb_message.h"
 #include <vector>
 
@@ -95,38 +94,33 @@ public:
     int getTextWidth(const char* text) const override;
 
 private:
-    // Anti-aliased font for status/detail text (loaded lazily).
-    mutable TtfText ui_font_;
-    mutable bool ui_font_loaded_ = false;
-    void ensureUiFont() const;
-
-    // Layout constants (320x170 display) - adjusted for 8x16 font
+    // Layout constants (320x170)
     static const int STATUS_BAR_Y = 0;
-    static const int STATUS_BAR_H = 20;      // 16px font + 4px padding
-    static const int HEADER_Y = 20;
-    static const int HEADER_H = 18;          // 16px font + 2px padding
-    static const int LIST_Y = 38;
-    static const int LIST_H = 114;           // 38 to 152
+    static const int STATUS_BAR_H = 16;
+    static const int HEADER_Y = 16;
+    static const int HEADER_H = 14;
+    static const int LIST_Y = 30;
+    static const int LIST_H = 122;           // 30 to 152
     static const int STATS_BAR_Y = 152;
-    static const int STATS_BAR_H = 18;       // 16px font + 2px padding
-    static const int ROW_HEIGHT = 19;        // 16px font + 3px padding
-    static const int MAX_VISIBLE_ROWS = 6;   // 114 / 19 = 6
+    static const int STATS_BAR_H = 18;
+    static const int ROW_HEIGHT = 14;        // mono line + padding
+    static const int MAX_VISIBLE_ROWS = 8;   // 122 / 14 ≈ 8
 
-    // Column positions and widths (8 pixels per character + 1px spacing)
+    // Column positions (approximate mono advances)
     static const int COL_ICAO_X = 2;
-    static const int COL_ICAO_W = 54;        // 6 chars * 9px
-    static const int COL_CALL_X = 60;
-    static const int COL_CALL_W = 72;        // 8 chars * 9px (icon + 7 chars)
-    static const int COL_ALT_X = 136;
-    static const int COL_ALT_W = 45;         // 5 chars * 9px
-    static const int COL_SPD_X = 185;
-    static const int COL_SPD_W = 27;         // 3 chars * 9px
-    static const int COL_HDG_X = 216;
-    static const int COL_HDG_W = 27;         // 3 chars * 9px
-    static const int COL_DIST_X = 247;
-    static const int COL_DIST_W = 45;        // 5 chars * 9px
-    static const int COL_SEEN_X = 296;
-    static const int COL_SEEN_W = 22;        // 4 chars * 9px (reduced to fit)
+    static const int COL_ICAO_W = 48;
+    static const int COL_CALL_X = 52;
+    static const int COL_CALL_W = 64;
+    static const int COL_ALT_X = 120;
+    static const int COL_ALT_W = 40;
+    static const int COL_SPD_X = 164;
+    static const int COL_SPD_W = 28;
+    static const int COL_HDG_X = 196;
+    static const int COL_HDG_W = 28;
+    static const int COL_DIST_X = 228;
+    static const int COL_DIST_W = 40;
+    static const int COL_SEEN_X = 272;
+    static const int COL_SEEN_W = 44;
 
     /**
      * Format time since last seen

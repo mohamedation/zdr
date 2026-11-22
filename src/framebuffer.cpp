@@ -67,6 +67,37 @@ bool Framebuffer::init() {
     return true;
 }
 
+bool Framebuffer::initSoft(int w, int h) {
+    if (w <= 0 || h <= 0) {
+        std::cerr << "initSoft: invalid size " << w << "x" << h << std::endl;
+        return false;
+    }
+
+    if (fb_ptr != nullptr && fb_ptr != MAP_FAILED) {
+        munmap(fb_ptr, screensize);
+        fb_ptr = nullptr;
+    }
+    if (fb_fd >= 0) {
+        close(fb_fd);
+        fb_fd = -1;
+    }
+
+    std::memset(&vinfo, 0, sizeof(vinfo));
+    std::memset(&finfo, 0, sizeof(finfo));
+    vinfo.xres = w;
+    vinfo.yres = h;
+    vinfo.bits_per_pixel = 16;
+    finfo.line_length = static_cast<__u32>(w * 2);
+
+    width = w;
+    height = h;
+    screensize = static_cast<size_t>(w) * static_cast<size_t>(h) * sizeof(uint16_t);
+    fb_ptr = nullptr;
+    back_buffer_.assign(static_cast<size_t>(w) * static_cast<size_t>(h), 0x0000);
+    initialized = true;
+    return true;
+}
+
 void Framebuffer::clear(uint16_t color) {
     if (!initialized) return;
 
@@ -151,12 +182,12 @@ void Framebuffer::fillRect(int x, int y, int w, int h, uint16_t color) {
 void Framebuffer::update() {
     // Copy back buffer to the framebuffer in one shot
     // This eliminates tearing because the user sees a complete frame
-    if (!initialized) return;
+    if (!initialized || fb_ptr == nullptr) return;
     memcpy(fb_ptr, back_buffer_.data(), back_buffer_.size() * sizeof(uint16_t));
 }
 
 bool Framebuffer::saveScreenshot(const char* filename) {
-    if (!initialized || fb_ptr == nullptr) {
+    if (!initialized || back_buffer_.empty()) {
         std::cerr << "Framebuffer not initialized" << std::endl;
         return false;
     }

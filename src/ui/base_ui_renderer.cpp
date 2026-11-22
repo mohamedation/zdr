@@ -1,4 +1,5 @@
 #include "ui/base_ui_renderer.h"
+#include "ui/ui_text.h"
 #include "font.h"
 #include <cstring>
 #include <algorithm>
@@ -13,38 +14,21 @@ void BaseUIRenderer::drawChar(int x, int y, char c, uint16_t color) {
     // Only support printable ASCII
     if (c < 0x20 || c > 0x7E) return;
 
-    // Default 6x8 font
-    const uint8_t* glyph = font6x8[c - 0x20];
-
-    for (int row = 0; row < FONT_6X8_HEIGHT; row++) {
-        uint8_t line = glyph[row];
-        for (int col = 0; col < FONT_6X8_WIDTH; col++) {
-            if (line & (0x80 >> col)) {
-                fb_.drawPixel(x + col, y + row, color);
-            }
-        }
-    }
+    char buf[2] = {c, '\0'};
+    uiText().draw(fb_, x, y, buf, TextStyle::Body, color);
 }
 
 void BaseUIRenderer::drawText(int x, int y, const char* text, uint16_t color) {
     if (!text) return;
-
-    int cursor_x = x;
-    while (*text) {
-        drawChar(cursor_x, y, *text, color);
-        cursor_x += FONT_6X8_WIDTH + 1; // character width + 1 pixel spacing
-        text++;
-    }
+    uiText().draw(fb_, x, y, text, TextStyle::Body, color);
 }
 
 void BaseUIRenderer::drawTextBg(int x, int y, const char* text, uint16_t fg, uint16_t bg) {
     if (!text) return;
 
-    int text_len = 0;
-    const char* p = text;
-    while (*p++) text_len++;
-
-    fb_.fillRect(x, y, text_len * (FONT_6X8_WIDTH + 1), FONT_6X8_HEIGHT, bg);
+    const int w = getTextWidth(text);
+    const int h = uiText().lineHeight(TextStyle::Body);
+    fb_.fillRect(x, y, w, h, bg);
     drawText(x, y, text, fg);
 }
 
@@ -144,6 +128,5 @@ void BaseUIRenderer::updateDisplay() {
 
 int BaseUIRenderer::getTextWidth(const char* text) const {
     if (!text) return 0;
-    // 6x8 font: 6 pixels per char + 1 pixel spacing between chars
-    return strlen(text) * (FONT_6X8_WIDTH + 1);
+    return uiText().width(text, TextStyle::Body);
 }

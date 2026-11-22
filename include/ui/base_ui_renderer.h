@@ -10,8 +10,8 @@
  * This class provides common UI rendering methods that can be used
  * by all pages (SDR, ADSB, Menu, etc.)
  *
- * Subclasses can override drawText/drawTextBg/getTextWidth to use
- * different fonts (e.g. ADSBUIRenderer uses an 8x16 font for readability).
+ * Text goes through UiText (FreeType styles) with a bitmap fallback.
+ * Subclasses may override drawText for a different default TextStyle.
  */
 class BaseUIRenderer {
 public:

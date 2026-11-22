@@ -62,7 +62,8 @@ private:
     enum ViewMode {
         VIEW_LIST,
         VIEW_DETAIL,
-        VIEW_RADAR,
+        VIEW_RADAR,        // list + radar
+        VIEW_RADAR_SCOPE,  // radar only
         VIEW_SETTINGS
     };
     ViewMode view_mode_;
@@ -78,6 +79,8 @@ private:
     float blink_timer_;           // Timer for blinking selected aircraft
     bool blink_state_;            // Current blink state (true = visible)
     int last_sweep_sector_;       // Radar sector (90 deg) for the tick sound
+    float radar_scope_range_;     // Manual zoom range for VIEW_RADAR_SCOPE (km)
+    int radar_scope_range_index_; // Index into kRadarScopeRanges[]
 
     // Compass (BMI270 + BMM150). When the board has no IMU the radar stays
     // north-up and the I key is a no-op.
@@ -91,8 +94,18 @@ private:
     std::set<uint32_t> known_icaos_;  // for the "new aircraft" chime
     time_t last_new_aircraft_chime_ = 0;  // throttle: at most one per 3 s
 
-    // Enter-key view cycle helper
+    // Enter-key view cycle helpers
     void openRadarView();
+    void openRadarScopeView();
+
+    // Full-screen radar: selection is limited to aircraft inside the
+    // current zoom range.
+    static const float kRadarScopeRanges[];
+    static const int kNumRadarScopeRanges;
+    void collectRadarVisibleIndices(std::vector<int>& out) const;
+    void ensureRadarScopeSelection();
+    void cycleRadarScopeSelection(int direction);
+    void zoomRadarScope(int direction);
 
     // GPS position source
     GpsLocator gps_;
@@ -150,7 +163,11 @@ private:
     void handleListInput(AppKeyCode key);
     void handleDetailInput(AppKeyCode key);
     void handleRadarInput(AppKeyCode key);
+    void handleRadarScopeInput(AppKeyCode key);
     void handleSettingsInput(AppKeyCode key);
+    bool isRadarView() const {
+        return view_mode_ == VIEW_RADAR || view_mode_ == VIEW_RADAR_SCOPE;
+    }
 
     // Compass helpers
     void updateRadarRotation(float delta_time);
