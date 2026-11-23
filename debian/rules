@@ -6,6 +6,8 @@
 override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release
 
+# Vendored readsb pulls libncurses / libzstd / zlib / librtlsdr; those must be
+# installed at build time (see Build-Depends) so dpkg-shlibdeps can resolve them.
 override_dh_shlibdeps:
 	dh_shlibdeps
 
