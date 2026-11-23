@@ -109,6 +109,37 @@ bool AppConfig::setDefaults() {
     set_if_missing(imu, "offset_deg", 0.0);
     set_if_missing(imu, "invert", false);
 
+    // Optional Web-Mercator basemap under ADS-B / AIS scopes.
+    // full_screen=false keeps the map clipped to the radar circle so the
+    // no-fill caption chrome stays readable.
+    nlohmann::json& map = section("map");
+    set_if_missing(map, "enabled", true);
+    set_if_missing(map, "provider", "esri_dark");
+    set_if_missing(map, "url_template", "");
+    set_if_missing(map, "attribution", "");
+    set_if_missing(map, "proxy", "");
+    set_if_missing(map, "dim", 0.90);
+    set_if_missing(map, "cache_hours", 168);
+    set_if_missing(map, "full_screen", false);
+
+    nlohmann::json& ais = section("ais");
+    set_if_missing(ais, "udp_export", false);
+    set_if_missing(ais, "udp_host", "255.255.255.255");
+    set_if_missing(ais, "udp_port", 10110);
+
+    nlohmann::json& acars = section("acars");
+    if (!acars.contains("channels") || !acars["channels"].is_array()) {
+        acars["channels"] = nlohmann::json::array({131.550, 131.725, 131.825});
+        changed = true;
+    }
+    set_if_missing(acars, "gain", 40.0);
+    set_if_missing(acars, "udp_port", 5556);
+
+    nlohmann::json& rf433 = section("rf433");
+    set_if_missing(rf433, "frequency_mhz", 433.92);
+    set_if_missing(rf433, "gain_tenths", -1);
+    set_if_missing(rf433, "filter", "all");  // all | tpms | weather | other
+
     return changed;
 }
 

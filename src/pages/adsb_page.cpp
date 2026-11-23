@@ -128,6 +128,9 @@ void ADSBPage::onEnter() {
         sdr_.close();
         std::cout << "ADSBPage: Closed SDR device" << std::endl;
 
+        std::system("pkill -9 acarsdec 2>/dev/null");
+        std::system("pkill -9 rtl_433 2>/dev/null");
+
         // Give device time to be released
         usleep(500000);  // 500ms
 
@@ -207,6 +210,17 @@ void ADSBPage::update(float delta_time) {
                 blink_state_ = !blink_state_;
             }
         }
+
+        // Delay the first map fetch so the range has settled from live traffic.
+        radar_view_age_ += delta_time;
+        if (observer_position_set_ && radar_view_age_ >= 3.0f) {
+            const float range_km = (view_mode_ == VIEW_RADAR_SCOPE)
+                                      ? radar_scope_range_
+                                      : calculateMaxRange();
+            map_bg_.request(observer_lat_, observer_lon_, range_km);
+        }
+    } else {
+        radar_view_age_ = 0.0f;
     }
 
     // Read aircraft.json every second
@@ -889,11 +903,18 @@ void ADSBPage::renderCurrentView() {
                                   compass_active, imu_.heading(),
                                   heading_up_ && compass_active);
 
-        // Render radar display with split layout
+        // Render radar display with split layout (+ optional basemap)
         radar_ui_.renderRadarDisplay(aircraft_list_, sweep_angle_, max_range,
                                      observer_lat_, observer_lon_,
                                      selected_index_, scroll_offset_,
-                                     blink_state_, radar_rotation_);
+                                     blink_state_, radar_rotation_,
+                                     map_bg_.enabled() ? &map_bg_ : nullptr);
+        if (map_bg_.enabled() && map_bg_.hasImage()) {
+            const char* attr = map_bg_.attribution();
+            const int aw = static_cast<int>(std::strlen(attr)) * 6;
+            radar_ui_.renderText(std::max(130, 316 - aw), 161, attr,
+                                 COLOR_RADAR_TEXT);
+        }
 
     } else if (view_mode_ == VIEW_RADAR_SCOPE) {
         // Flat black canvas like vertical profile (no tinted chrome bars).
@@ -910,7 +931,14 @@ void ADSBPage::renderCurrentView() {
             heading_up_ && compass_active);
         radar_ui_.renderRadarScope(aircraft_list_, sweep_angle_,
                                    radar_scope_range_, selected_index_,
-                                   radar_rotation_);
+                                   radar_rotation_,
+                                   map_bg_.enabled() ? &map_bg_ : nullptr);
+        if (map_bg_.enabled() && map_bg_.hasImage()) {
+            const char* attr = map_bg_.attribution();
+            const int aw = static_cast<int>(std::strlen(attr)) * 6;
+            radar_ui_.renderText(std::max(130, 316 - aw), 161, attr,
+                                 COLOR_RADAR_TEXT);
+        }
 
     } else if (view_mode_ == VIEW_VERTICAL_PROFILE) {
         ui_.renderVerticalProfile(aircraft_list_, selected_index_,
@@ -1042,6 +1070,7 @@ void ADSBPage::loadConfig() {
         std::cout << "ADSBPage: No saved observer position" << std::endl;
     }
     loadImuConfig();
+    map_bg_.loadConfig();
 }
 
 void ADSBPage::loadImuConfig() {

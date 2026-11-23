@@ -119,6 +119,8 @@ void SpectrumPage::onEnter() {
 
     // readsb may still own the dongle after the ADSB page.
     system("pkill -9 readsb 2>/dev/null");
+    system("pkill -9 acarsdec 2>/dev/null");
+    system("pkill -9 rtl_433 2>/dev/null");
 
     if (!sdr_.isCapturing()) {
         usleep(800000);

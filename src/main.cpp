@@ -3,12 +3,18 @@
 #include "ui/sdr_ui_renderer.h"
 #include "ui/adsb_ui_renderer.h"
 #include "ui/radar_ui_renderer.h"
+#include "ui/ais_ui_renderer.h"
+#include "ui/acars_ui_renderer.h"
+#include "ui/rf433_ui_renderer.h"
 #include "input_handler.h"
 #include "audio_output.h"
 #include "core/page_manager.h"
 #include "core/first_run_guide.h"
 #include "pages/sdr_page.h"
 #include "pages/adsb_page.h"
+#include "pages/ais_page.h"
+#include "pages/acars_page.h"
+#include "pages/rf433_page.h"
 #include "pages/spectrum_page.h"
 #include "app_config.h"
 #include "sample_rate.h"
@@ -113,6 +119,9 @@ int main(int argc, char* argv[]) {
     SDRUIRenderer sdr_ui(fb);
     ADSBUIRenderer adsb_ui(fb);
     RadarUIRenderer radar_ui(fb);
+    AisUIRenderer ais_ui(fb);
+    AcarsUIRenderer acars_ui(fb);
+    Rf433UIRenderer rf433_ui(fb);
 
     // Initialize keyboard input
     InputHandler input;
@@ -260,6 +269,15 @@ int main(int argc, char* argv[]) {
 
     auto adsb_page = std::make_unique<ADSBPage>(fb, sdr, adsb_ui, radar_ui);
     page_manager.registerPage(std::move(adsb_page));
+
+    auto ais_page = std::make_unique<AisPage>(fb, sdr, input, ais_ui);
+    page_manager.registerPage(std::move(ais_page));
+
+    auto acars_page = std::make_unique<AcarsPage>(fb, sdr, input, acars_ui);
+    page_manager.registerPage(std::move(acars_page));
+
+    auto rf433_page = std::make_unique<Rf433Page>(fb, sdr, input, rf433_ui);
+    page_manager.registerPage(std::move(rf433_page));
 
     std::cout << "Starting main loop with " << page_manager.pageCount()
               << " pages..." << std::endl;

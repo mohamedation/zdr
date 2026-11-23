@@ -7,7 +7,7 @@ Standards-Version: 4.1.3
 
 Package: zdr
 Architecture: arm64
-Depends: ${shlibs:Depends}, ${misc:Depends}, pipewire-alsa, libasound2-plugins, libncurses6
+Depends: ${shlibs:Depends}, ${misc:Depends}, pipewire-alsa, libasound2-plugins, libncurses6, curl, rtl-433
 Description: Lightweight SDR interface for Cardputer Zero / Raspberry Pi
  A graphical SDR application for small framebuffer displays (Cardputer Zero,
  Raspberry Pi). Supports RTL-SDR devices with spectrum/waterfall and
@@ -17,5 +17,9 @@ Description: Lightweight SDR interface for Cardputer Zero / Raspberry Pi
  Features:
   - Real-time spectrum analyzer and waterfall display
   - FM/NFM/AM/USB/LSB audio demodulation
+  - ADS-B aircraft radar with optional map basemap
+  - AIS vessel tracker (162 MHz native decode)
+  - ACARS aircraft messages (bundled acarsdec)
+  - 433 MHz / TPMS sensors via rtl_433
   - Volume control and squelch detection
   - Optimized for Cardputer Zero (CM0) and Raspberry Pi

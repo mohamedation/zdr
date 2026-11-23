@@ -13,6 +13,7 @@
 #include "adsb/readsb_controller.h"
 #include "adsb/readsb_json_parser.h"
 #include "adsb/adsb_config.h"
+#include "adsb/map_background.h"
 #include <vector>
 #include <map>
 #include <memory>
@@ -163,6 +164,10 @@ private:
     // Configuration
     ADSBConfig config_;
     std::string config_path_;
+
+    // Optional Web-Mercator basemap under radar scopes (curl + tile cache).
+    MapBackground map_bg_;
+    float radar_view_age_ = 0.0f;  // delay first map fetch until range settles
 
     // Helper methods
     void updateAircraftList();

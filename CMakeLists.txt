@@ -88,18 +88,36 @@ set(SOURCES
     # Pages
     src/pages/sdr_page.cpp
     src/pages/adsb_page.cpp
+    src/pages/ais_page.cpp
+    src/pages/acars_page.cpp
+    src/pages/rf433_page.cpp
     src/pages/spectrum_page.cpp
     # ADSB integration
     src/adsb/readsb_controller.cpp
     src/adsb/readsb_json_parser.cpp
     src/adsb/adsb_config.cpp
+    src/adsb/map_background.cpp
+    # AIS (native IQ decode at 162 MHz)
+    src/ais/ais_decoder.cpp
+    src/ais/ais_message.cpp
+    src/ais/ais_store.cpp
+    src/ais/nmea_encoder.cpp
+    # ACARS (bundled acarsdec subprocess)
+    src/acars/acars_controller.cpp
+    # 433 MHz / TPMS (rtl_433 subprocess)
+    src/rf433/rtl433_controller.cpp
 
     # UI rendering
     src/ui/base_ui_renderer.cpp
     src/ui/sdr_ui_renderer.cpp
     src/ui/adsb_ui_renderer.cpp
     src/ui/radar_ui_renderer.cpp
+    src/ui/ais_ui_renderer.cpp
+    src/ui/ais_portrait.cpp
+    src/ui/acars_ui_renderer.cpp
+    src/ui/rf433_ui_renderer.cpp
     src/ui/aircraft_glyph.cpp
+    src/ui/ship_glyph.cpp
     src/ui/ttf_text.cpp
     src/ui/ui_text.cpp
 
@@ -158,6 +176,8 @@ install(FILES share/images/zdr.png
         DESTINATION share/APPLaunch/share/images)
 # ADSB decoder bundled with the RTL-SDR backend (Debian's readsb lacks it).
 install(PROGRAMS vendor/readsb/readsb DESTINATION lib/zdr)
+# ACARS decoder (GPLv2) kept as a separate executable, never linked.
+install(PROGRAMS vendor/acarsdec/acarsdec DESTINATION lib/zdr)
 
 # 2) CLI install. The system-wide /usr/share/applications entry is NOT
 #    installed: the AppStore only allows usr/share/APPLaunch/**,
@@ -172,7 +192,7 @@ set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_CONTACT "mohamedation <mohamedation@gmail.com>")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lightweight SDR interface for Raspberry Pi")
 set(CPACK_PACKAGE_DESCRIPTION "A graphical SDR application optimized for small SPI displays on Raspberry Pi with audio demodulation")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "librtlsdr0, libasound2, libpulse0, libfreetype6, libc6, pipewire-alsa, libasound2-plugins")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "librtlsdr0, libasound2, libpulse0, libfreetype6, libc6, pipewire-alsa, libasound2-plugins, curl, rtl-433")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
 set(CPACK_DEBIAN_PACKAGE_SECTION "hamradio")
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")

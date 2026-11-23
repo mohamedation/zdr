@@ -7,6 +7,8 @@
 #include <vector>
 #include <cmath>
 
+class MapBackground;
+
 /**
  * RadarUIRenderer - UI renderer for radar page
  *
@@ -42,7 +44,8 @@ public:
                            int selected_index,
                            int scroll_offset,
                            bool blink_state,
-                           float heading_deg = 0.0f);
+                           float heading_deg = 0.0f,
+                           MapBackground* map = nullptr);
 
     /**
      * Full-screen radar (no list). Aircraft beyond max_range are omitted.
@@ -52,7 +55,12 @@ public:
                           float sweep_angle,
                           float max_range,
                           int selected_index,
-                          float heading_deg = 0.0f);
+                          float heading_deg = 0.0f,
+                          MapBackground* map = nullptr);
+
+    /** Draw optional Web-Mercator basemap under the scope (before rings). */
+    void drawMapBackground(MapBackground& map, int cx, int cy, int radius,
+                           float max_range, float heading_deg = 0.0f);
 
     /**
      * Render top status bar

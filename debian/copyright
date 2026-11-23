@@ -19,6 +19,12 @@ Comment: Prebuilt binary from https://github.com/wiedehopf/readsb (RTLSDR=yes).
  See vendor/readsb/SOURCE.md for the pinned commit and SHA-256.
 License: GPL-3.0-or-later
 
+Files: vendor/acarsdec/*
+Copyright: Thierry Leconte and acarsdec contributors
+Comment: Prebuilt aarch64 binary; run as a subprocess only (GPLv2-only).
+ See vendor/acarsdec/SOURCE.md and LICENSE.md.
+License: GPL-2.0
+
 Files: hardware/rtl-sdr-v4-mount/*
 Copyright: Weiming Feng
 License: CC0-1.0

@@ -481,6 +481,22 @@ void PageManager::drawPageIcon(int page_index, int x, int y,
         fb_.fillRect(x + 9, y + 4, 1, 8, color);
         fb_.fillRect(x + 4, y + 7, 11, 1, color);
         fb_.fillRect(x + 6, y + 12, 7, 1, color);
+    } else if (std::strcmp(name, "AIS") == 0) {
+        // Hull + mast for marine AIS.
+        fb_.fillRect(x + 3, y + 10, 12, 3, color);
+        fb_.fillRect(x + 5, y + 8, 8, 2, color);
+        fb_.fillRect(x + 8, y + 3, 2, 5, color);
+        fb_.fillRect(x + 7, y + 2, 4, 1, color);
+    } else if (std::strcmp(name, "ACARS") == 0) {
+        // Envelope / message.
+        fb_.drawRect(x + 2, y + 4, 14, 10, color);
+        fb_.drawLine(x + 2, y + 4, x + 9, y + 10, color);
+        fb_.drawLine(x + 16, y + 4, x + 9, y + 10, color);
+    } else if (std::strcmp(name, "433") == 0) {
+        // Tire / pressure disc.
+        drawCircleOutline(x + 9, y + 9, 7, color);
+        drawCircleOutline(x + 9, y + 9, 3, color);
+        fb_.fillRect(x + 8, y + 2, 2, 3, color);
     } else {
         fb_.drawRect(x + 1, y + 1, 16, 16, color);
     }

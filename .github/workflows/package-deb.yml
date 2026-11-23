@@ -38,6 +38,8 @@ jobs:
               file ca-certificates
             test -x vendor/readsb/readsb
             file vendor/readsb/readsb | grep -qi aarch64
+            test -x vendor/acarsdec/acarsdec
+            file vendor/acarsdec/acarsdec | grep -qi aarch64
             dpkg-buildpackage -us -uc -b -j"$(nproc)"
             mkdir -p /src/dist
             cp -v ../zdr_*.deb /src/dist/

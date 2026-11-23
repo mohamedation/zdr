@@ -1,4 +1,7 @@
 #include "ui/radar_ui_renderer.h"
+#ifndef ZDR_UI_PREVIEW
+#include "adsb/map_background.h"
+#endif
 #include "ui/aircraft_glyph.h"
 #include "ui/ui_text.h"
 #include "font.h"
@@ -14,6 +17,21 @@ RadarUIRenderer::RadarUIRenderer(Framebuffer& fb) : BaseUIRenderer(fb) {
 RadarUIRenderer::~RadarUIRenderer() {
 }
 
+void RadarUIRenderer::drawMapBackground(MapBackground& map, int cx, int cy,
+                                        int radius, float max_range,
+                                        float heading_deg) {
+#ifdef ZDR_UI_PREVIEW
+    (void)map;
+    (void)cx;
+    (void)cy;
+    (void)radius;
+    (void)max_range;
+    (void)heading_deg;
+#else
+    map.draw(fb_, cx, cy, radius, max_range, heading_deg);
+#endif
+}
+
 void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircraft,
                                          float sweep_angle,
                                          float max_range,
@@ -22,13 +40,24 @@ void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircr
                                          int selected_index,
                                          int scroll_offset,
                                          bool blink_state,
-                                         float heading_deg) {
+                                         float heading_deg,
+                                         MapBackground* map) {
     (void)observer_lat;
     (void)observer_lon;
     (void)sweep_angle;  // Cosmetic beam removed; arg kept for API stability.
 
     // Flat black content area (same canvas as profile / radar-only).
     fb_.fillRect(0, RADAR_Y, 320, RADAR_H, COLOR_BLACK);
+
+#ifndef ZDR_UI_PREVIEW
+    // Basemap under the scope (list stays black).
+    if (map != nullptr && map->hasImage()) {
+        drawMapBackground(*map, RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
+                          max_range, heading_deg);
+    }
+#else
+    (void)map;
+#endif
 
     // Vertical separator between list and radar
     drawVLine(LIST_W, RADAR_Y, RADAR_H, COLOR_RADAR_GRID);
@@ -102,11 +131,21 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
                                        float sweep_angle,
                                        float max_range,
                                        int selected_index,
-                                       float heading_deg) {
+                                       float heading_deg,
+                                       MapBackground* map) {
     (void)sweep_angle;  // Cosmetic beam removed; arg kept for API stability.
 
     // Same flat black canvas as vertical profile (no bar backgrounds).
     fb_.fillRect(0, SCOPE_RADAR_Y, 320, SCOPE_RADAR_H, COLOR_BLACK);
+
+#ifndef ZDR_UI_PREVIEW
+    if (map != nullptr && map->hasImage()) {
+        drawMapBackground(*map, SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
+                          max_range, heading_deg);
+    }
+#else
+    (void)map;
+#endif
 
     drawRangeRings(SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
                    NUM_RANGE_RINGS, max_range, heading_deg);

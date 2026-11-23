@@ -153,6 +153,8 @@ void SDRPage::onEnter() {
     // Kill any running readsb process to free up the SDR device
     std::cout << "SDRPage: Killing readsb process..." << std::endl;
     system("pkill -9 readsb 2>/dev/null");
+    system("pkill -9 acarsdec 2>/dev/null");
+    system("pkill -9 rtl_433 2>/dev/null");
 
     // Wait longer for USB device to be fully released
     // USB device release can take time after process termination
