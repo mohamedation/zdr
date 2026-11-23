@@ -1690,6 +1690,7 @@ void ADSBPage::handleRadarScopeInput(AppKeyCode key) {
         }
 
         case APPKEY_G:
+            // Gain still toggles on scope; +/- are reserved for zoom above.
             if (gain_ < 0) {
                 gain_ = 0;
                 sdr_.setAutoGain(false);
@@ -1697,20 +1698,6 @@ void ADSBPage::handleRadarScopeInput(AppKeyCode key) {
             } else {
                 gain_ = -1;
                 sdr_.setAutoGain(true);
-            }
-            break;
-
-        case APPKEY_PLUS:
-            if (gain_ >= 0 && gain_ < 490) {
-                gain_ += 10;
-                sdr_.setGain(gain_);
-            }
-            break;
-
-        case APPKEY_MINUS:
-            if (gain_ >= 0 && gain_ > 0) {
-                gain_ -= 10;
-                sdr_.setGain(gain_);
             }
             break;
 

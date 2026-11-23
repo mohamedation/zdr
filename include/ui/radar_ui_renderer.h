@@ -69,6 +69,11 @@ public:
     /** Max distance (km) that still plots on the full-screen scope. */
     static float scopePlotLimitKm(float max_range);
 
+    /** Observer-relative polar → view-relative after pan (km / degrees). */
+    static void applyPan(float distance, float bearing,
+                         float pan_east_km, float pan_north_km,
+                         float* out_distance, float* out_bearing);
+
     /**
      * Render top status bar
      * @param aircraft_count Number of aircraft
@@ -250,11 +255,6 @@ private:
                          int cx, int cy, int radius,
                          int* out_x, int* out_y,
                          bool clamp_to_radius = true);
-
-    /** Observer-relative polar → view-relative after pan (km / degrees). */
-    static void applyPan(float distance, float bearing,
-                         float pan_east_km, float pan_north_km,
-                         float* out_distance, float* out_bearing);
 };
 
 #endif // RADAR_UI_RENDERER_H
