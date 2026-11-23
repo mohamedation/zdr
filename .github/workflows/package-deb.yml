@@ -1,9 +1,11 @@
 name: Package deb
 
 # Builds an arm64 .deb for Cardputer Zero and uploads it as a workflow artifact.
+# Auto-builds on develop pushes and version tags (v*); not on plain main pushes.
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ develop ]
+    tags: [ 'v*' ]
   workflow_dispatch:
 
 jobs:
@@ -32,6 +34,7 @@ jobs:
               build-essential debhelper cmake pkg-config \
               librtlsdr-dev libasound2-dev libpulse-dev libfreetype-dev \
               nlohmann-json3-dev libasound2-plugins \
+              libncurses6 libtinfo6 libzstd1 zlib1g \
               file ca-certificates
             test -x vendor/readsb/readsb
             file vendor/readsb/readsb | grep -qi aarch64

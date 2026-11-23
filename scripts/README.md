@@ -19,8 +19,8 @@ the hash changes.
 
 ## CI `.deb`
 
-Push to `main` or `develop` (or run **Package deb** via Actions → workflow_dispatch).
-Download the `zdr-arm64-deb` artifact and on the Cardputer:
+Push to `develop`, push a `v*` tag, or run **Package deb** via Actions → workflow_dispatch.
+(Plain pushes to `main` do not package.) Download the `zdr-arm64-deb` artifact and on the Cardputer:
 
 ```bash
 scp zdr_*.deb pi@<cardputer-ip>:/tmp/
