@@ -1070,8 +1070,9 @@ void ADSBUIRenderer::renderKeyHelp() {
     struct Row { const char* key; const char* action; };
     static const Row rows[] = {
         {"TAB",        "PAGE MENU"},
-        {"UP/DOWN",    "SELECT AIRCRAFT"},
-        {"LEFT/RIGHT", "PAGE / ZOOM SCOPE"},
+        {"UP/DOWN",    "SELECT / SCOPE PAN (F/X)"},
+        {"LEFT/RIGHT", "PAGE / SCOPE PAN (Z/C)"},
+        {"+ / - / Y",  "SCOPE ZOOM (RINGS UPDATE)"},
         {"ENTER",      "LIST>DET>RADAR>SCOPE>PROF"},
         {"R",          "RADAR / SCOPE->RADAR"},
         {"I / 0",      "COMPASS UP / NORTH"},
@@ -1079,7 +1080,6 @@ void ADSBUIRenderer::renderKeyHelp() {
         {"M",          "PROFILE HELP MENU"},
         {"H",          "HELP / SETTINGS"},
         {"G",          "GAIN MODE (RADAR)"},
-        {"+ / -",      "GAIN (RADAR)"},
         {"FN+D/S",     "VOLUME"},
         {"HOLD ESC",   "QUIT"},
     };

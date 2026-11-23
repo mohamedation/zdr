@@ -83,6 +83,8 @@ private:
     int last_sweep_sector_;       // Radar sector (90 deg) for the tick sound
     float radar_scope_range_;     // Manual zoom range for VIEW_RADAR_SCOPE (km)
     int radar_scope_range_index_; // Index into kRadarScopeRanges[]
+    float radar_pan_east_km_ = 0.0f;   // Scope pan from observer (km)
+    float radar_pan_north_km_ = 0.0f;
 
     // Compass (BMI270 + BMM150). When the board has no IMU the radar stays
     // north-up and the I key is a no-op.
@@ -109,6 +111,10 @@ private:
     void ensureRadarScopeSelection();
     void cycleRadarScopeSelection(int direction);
     void zoomRadarScope(int direction);
+    void panRadarScope(int screen_dx, int screen_dy);
+    void clampRadarPan();
+    void scopeViewCenter(double& lat, double& lon) const;
+    void requestScopeMap(bool immediate = false);
 
     // Vertical profile: same range presets as radar scope; selection is
     // limited to aircraft with altitude inside the current range.

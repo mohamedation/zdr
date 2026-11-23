@@ -208,10 +208,12 @@ void ADSBPage::update(float delta_time) {
         // Delay the first map fetch so the range has settled from live traffic.
         radar_view_age_ += delta_time;
         if (observer_position_set_ && radar_view_age_ >= 3.0f) {
-            const float range_km = (view_mode_ == VIEW_RADAR_SCOPE)
-                                      ? radar_scope_range_
-                                      : calculateMaxRange();
-            map_bg_.request(observer_lat_, observer_lon_, range_km);
+            if (view_mode_ == VIEW_RADAR_SCOPE) {
+                requestScopeMap(false);
+            } else {
+                map_bg_.request(observer_lat_, observer_lon_,
+                                calculateMaxRange());
+            }
         }
     } else {
         radar_view_age_ = 0.0f;
@@ -320,6 +322,8 @@ void ADSBPage::openRadarScopeView() {
         view_mode_ = VIEW_RADAR_SCOPE;
         sweep_angle_ = 0.0f;
         last_sweep_sector_ = -1;
+        radar_pan_east_km_ = 0.0f;
+        radar_pan_north_km_ = 0.0f;
         // Seed zoom near the current traffic envelope, then snap to a preset.
         const float auto_range = calculateMaxRange();
         int best = 0;
@@ -334,6 +338,7 @@ void ADSBPage::openRadarScopeView() {
         radar_scope_range_index_ = best;
         radar_scope_range_ = kRadarScopeRanges[best];
         ensureRadarScopeSelection();
+        requestScopeMap(true);
         std::cout << "ADSBPage: Switching to radar scope ("
                   << radar_scope_range_ << " km)" << std::endl;
     } else {
@@ -462,15 +467,75 @@ void ADSBPage::zoomProfile(int direction) {
               << std::endl;
 }
 
+void ADSBPage::scopeViewCenter(double& lat, double& lon) const {
+    lat = observer_lat_ + static_cast<double>(radar_pan_north_km_) / 111.0;
+    const double cos_lat =
+        std::max(0.05, std::cos(lat * M_PI / 180.0));
+    lon = observer_lon_ +
+          static_cast<double>(radar_pan_east_km_) / (111.0 * cos_lat);
+}
+
+void ADSBPage::clampRadarPan() {
+    const float limit = radar_scope_range_ * 1.5f;
+    const float mag = std::sqrt(radar_pan_east_km_ * radar_pan_east_km_ +
+                                radar_pan_north_km_ * radar_pan_north_km_);
+    if (mag > limit && mag > 0.0f) {
+        const float s = limit / mag;
+        radar_pan_east_km_ *= s;
+        radar_pan_north_km_ *= s;
+    }
+}
+
+void ADSBPage::requestScopeMap(bool immediate) {
+    if (!map_bg_.enabled() || !observer_position_set_) return;
+    if (immediate) radar_view_age_ = 3.0f;
+    if (radar_view_age_ < 3.0f) return;
+    double lat = 0.0;
+    double lon = 0.0;
+    scopeViewCenter(lat, lon);
+    map_bg_.request(lat, lon, radar_scope_range_);
+}
+
+void ADSBPage::panRadarScope(int screen_dx, int screen_dy) {
+    // screen_dx: -1 left / +1 right; screen_dy: -1 up / +1 down.
+    const float step = std::max(1.0f, radar_scope_range_ * 0.25f);
+    float screen_east = static_cast<float>(screen_dx) * step;
+    float screen_north = static_cast<float>(-screen_dy) * step;
+
+    if (heading_up_ && imu_enabled_ && imu_.hasHeading()) {
+        const float rad =
+            radar_rotation_ * static_cast<float>(M_PI) / 180.0f;
+        const float cos_h = std::cos(rad);
+        const float sin_h = std::sin(rad);
+        // Rotate screen offsets into earth east/north.
+        const float east = screen_east * cos_h + screen_north * sin_h;
+        const float north = -screen_east * sin_h + screen_north * cos_h;
+        radar_pan_east_km_ += east;
+        radar_pan_north_km_ += north;
+    } else {
+        radar_pan_east_km_ += screen_east;
+        radar_pan_north_km_ += screen_north;
+    }
+    clampRadarPan();
+    ensureRadarScopeSelection();
+    requestScopeMap(true);
+    beeps_.play(900.0f, 12, 0.05f);
+}
+
 void ADSBPage::collectRadarVisibleIndices(std::vector<int>& out) const {
     out.clear();
-    // Include craft past the range ring but still on-screen (dive-in zoom).
+    // Include craft past the range ring but still on-screen (dive-in zoom),
+    // measured from the panned view center.
     const float plot_limit =
         RadarUIRenderer::scopePlotLimitKm(radar_scope_range_);
     for (size_t i = 0; i < aircraft_list_.size(); ++i) {
         const auto& ac = aircraft_list_[i];
         if (!ac.position_valid || ac.distance <= 0.0f) continue;
-        if (ac.distance > plot_limit) continue;
+        float view_dist = ac.distance;
+        float view_brg = ac.bearing;
+        RadarUIRenderer::applyPan(ac.distance, ac.bearing, radar_pan_east_km_,
+                                  radar_pan_north_km_, &view_dist, &view_brg);
+        if (view_dist > plot_limit) continue;
         out.push_back(static_cast<int>(i));
     }
 }
@@ -538,7 +603,10 @@ void ADSBPage::zoomRadarScope(int direction) {
     }
     radar_scope_range_index_ = next;
     radar_scope_range_ = kRadarScopeRanges[radar_scope_range_index_];
+    // Keep pan inside the new envelope; rings/labels redraw with max_range.
+    clampRadarPan();
     ensureRadarScopeSelection();
+    requestScopeMap(true);
     beeps_.play(direction < 0 ? 1320.0f : 880.0f, 20, 0.06f);
     std::cout << "ADSBPage: Radar scope range " << radar_scope_range_
               << " km" << std::endl;
@@ -929,7 +997,8 @@ void ADSBPage::renderCurrentView() {
         radar_ui_.renderRadarScope(aircraft_list_, sweep_angle_,
                                    radar_scope_range_, selected_index_,
                                    radar_rotation_,
-                                   map_bg_.enabled() ? &map_bg_ : nullptr);
+                                   map_bg_.enabled() ? &map_bg_ : nullptr,
+                                   radar_pan_east_km_, radar_pan_north_km_);
         if (map_bg_.enabled() && map_bg_.hasImage()) {
             const char* attr = map_bg_.attribution();
             const int aw = static_cast<int>(std::strlen(attr)) * 6;
@@ -1529,21 +1598,30 @@ void ADSBPage::handleVerticalProfileInput(AppKeyCode key) {
 
 void ADSBPage::handleRadarScopeInput(AppKeyCode key) {
     switch (key) {
+        // Cardputer arrows are F/Z/X/C — pan the zoomed scope.
         case APPKEY_UP:
-            cycleRadarScopeSelection(-1);
+            panRadarScope(0, -1);
             break;
 
         case APPKEY_DOWN:
-            cycleRadarScopeSelection(1);
+            panRadarScope(0, 1);
             break;
 
         case APPKEY_LEFT:
-        case APPKEY_ZOOM:
-            // Zoom in (smaller range) — only in-view craft stay selectable.
-            zoomRadarScope(-1);
+            panRadarScope(-1, 0);
             break;
 
         case APPKEY_RIGHT:
+            panRadarScope(1, 0);
+            break;
+
+        case APPKEY_PLUS:
+        case APPKEY_ZOOM:
+            // Zoom in (smaller range); rings/labels redraw closer.
+            zoomRadarScope(-1);
+            break;
+
+        case APPKEY_MINUS:
             // Zoom out (larger range).
             zoomRadarScope(1);
             break;

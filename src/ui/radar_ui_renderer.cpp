@@ -137,12 +137,26 @@ void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircr
                   TextStyle::Caption, COLOR_RADAR_TEXT);
 }
 
+void RadarUIRenderer::applyPan(float distance, float bearing,
+                               float pan_east_km, float pan_north_km,
+                               float* out_distance, float* out_bearing) {
+    const float rad = bearing * static_cast<float>(M_PI) / 180.0f;
+    const float east = distance * std::sin(rad) - pan_east_km;
+    const float north = distance * std::cos(rad) - pan_north_km;
+    *out_distance = std::sqrt(east * east + north * north);
+    float brg = std::atan2(east, north) * 180.0f / static_cast<float>(M_PI);
+    if (brg < 0.0f) brg += 360.0f;
+    *out_bearing = brg;
+}
+
 void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraft,
                                        float sweep_angle,
                                        float max_range,
                                        int selected_index,
                                        float heading_deg,
-                                       MapBackground* map) {
+                                       MapBackground* map,
+                                       float pan_east_km,
+                                       float pan_north_km) {
     (void)sweep_angle;  // Cosmetic beam removed; arg kept for API stability.
 
     // Same flat black canvas as vertical profile (no bar backgrounds).
@@ -158,6 +172,8 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
     (void)map;
 #endif
 
+    // Rings always fill the scope; labels track max_range so zooming in
+    // shows closer distances (e.g. 17/33/50 instead of 33/67/100).
     drawRangeRings(SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
                    NUM_RANGE_RINGS, max_range, heading_deg);
     drawCompassMarkings(SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
@@ -169,11 +185,16 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
     for (size_t i = 0; i < aircraft.size(); i++) {
         const auto& ac = aircraft[i];
         if (!ac.position_valid || ac.distance <= 0.0f) continue;
-        if (ac.distance > plot_limit) continue;
+
+        float view_dist = ac.distance;
+        float view_brg = ac.bearing;
+        applyPan(ac.distance, ac.bearing, pan_east_km, pan_north_km,
+                 &view_dist, &view_brg);
+        if (view_dist > plot_limit) continue;
 
         const bool is_selected = (i == (size_t)selected_index);
         drawAircraftBlip(SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
-                         ac.distance, ac.bearing,
+                         view_dist, view_brg,
                          ac.heading, ac.velocity_valid,
                          max_range, is_selected, heading_deg,
                          COLOR_RADAR_SELECTED);
@@ -217,7 +238,7 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
                       TextStyle::Caption, COLOR_RADAR_TEXT);
     }
 
-    const char* hints = "Up/Dn Change  M Menu";
+    const char* hints = "FZXC Pan  +/- Zoom";
     const int hints_w = uiText().width(hints, TextStyle::Caption);
     uiText().draw(fb_, 320 - 8 - hints_w, SCOPE_BOTTOM_Y + 3, hints,
                   TextStyle::Caption, COLOR_RADAR_TEXT);
@@ -502,10 +523,12 @@ void RadarUIRenderer::drawAircraftBlip(int cx, int cy, int radius,
                                        float rotation_deg,
                                        uint16_t selected_color) {
     // Convert polar to Cartesian. A heading-up scope rotates both the
-    // position and the aircraft glyph by the same angle.
+    // position and the aircraft glyph by the same angle. Do not clamp to
+    // the ring so zoom/pan can place craft past the outer circle.
     int blip_x, blip_y;
     polarToCartesian(distance, bearing - rotation_deg, max_range,
-                     cx, cy, radius, &blip_x, &blip_y);
+                     cx, cy, radius, &blip_x, &blip_y,
+                     /*clamp_to_radius=*/false);
 
     const uint16_t color = selected ? selected_color : COLOR_RADAR_BLIP;
     const float h = (velocity_valid ? heading : 0.0f) - rotation_deg;
@@ -589,11 +612,12 @@ uint16_t RadarUIRenderer::blendColor(uint16_t color1, uint16_t color2, float alp
 
 void RadarUIRenderer::polarToCartesian(float distance, float bearing, float max_range,
                                        int cx, int cy, int radius,
-                                       int* out_x, int* out_y) {
+                                       int* out_x, int* out_y,
+                                       bool clamp_to_radius) {
     float normalized_dist = (max_range > 0.0f)
                                 ? (distance / max_range) * static_cast<float>(radius)
                                 : 0.0f;
-    if (normalized_dist > static_cast<float>(radius)) {
+    if (clamp_to_radius && normalized_dist > static_cast<float>(radius)) {
         normalized_dist = static_cast<float>(radius);
     }
 
