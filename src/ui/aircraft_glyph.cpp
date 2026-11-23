@@ -7,24 +7,49 @@
 namespace AircraftGlyph {
 namespace {
 
-// Aircraft silhouette (11 tall, 9 wide), nose in +dy.
-// Pointed nose, tapering body, full-width wing at y=-1, narrow tail.
+// Top-down jet silhouette (nose = +dy). Dense enough that scale≈1 radar
+// blips read clearly; larger detail scales stamp each point so wings stay solid.
 constexpr int kPattern[][2] = {
-    { 0,  5},                                              // nose tip
-    { 0,  4},                                              // nose
-    { 0,  3},                                              // nose
-    {-1,  2}, { 0,  2}, { 1,  2},                          // fuselage
-    {-2,  1}, {-1,  1}, { 0,  1}, { 1,  1}, { 2,  1},     // fuselage
-    {-3,  0}, {-2,  0}, {-1,  0}, { 0,  0},                // wing leading edge
-    { 1,  0}, { 2,  0}, { 3,  0},                          // wing leading edge
-    {-4, -1}, {-3, -1}, {-2, -1}, {-1, -1}, { 0, -1},      // wing full span
-    { 1, -1}, { 2, -1}, { 3, -1}, { 4, -1},                // wing full span
-    { 0, -2},                                              // fuselage
-    { 0, -3},                                              // fuselage
-    {-2, -4}, {-1, -4}, { 0, -4}, { 1, -4}, { 2, -4},      // tail
-    { 0, -5},                                              // tail tip
+    // Nose / cockpit
+    { 0,  6},
+    {-1,  5}, { 0,  5}, { 1,  5},
+    {-1,  4}, { 0,  4}, { 1,  4},
+    // Forward fuselage
+    {-1,  3}, { 0,  3}, { 1,  3},
+    {-1,  2}, { 0,  2}, { 1,  2},
+    // Wing leading edge + engines
+    {-5,  1}, {-4,  1}, {-3,  1}, {-2,  1}, {-1,  1}, { 0,  1},
+    { 1,  1}, { 2,  1}, { 3,  1}, { 4,  1}, { 5,  1},
+    // Main wing (full span)
+    {-6,  0}, {-5,  0}, {-4,  0}, {-3,  0}, {-2,  0}, {-1,  0}, { 0,  0},
+    { 1,  0}, { 2,  0}, { 3,  0}, { 4,  0}, { 5,  0}, { 6,  0},
+    {-5, -1}, {-4, -1}, {-3, -1}, {-2, -1}, {-1, -1}, { 0, -1},
+    { 1, -1}, { 2, -1}, { 3, -1}, { 4, -1}, { 5, -1},
+    // Aft fuselage
+    {-1, -2}, { 0, -2}, { 1, -2},
+    {-1, -3}, { 0, -3}, { 1, -3},
+    // Horizontal stabilizer
+    {-3, -4}, {-2, -4}, {-1, -4}, { 0, -4}, { 1, -4}, { 2, -4}, { 3, -4},
+    {-2, -5}, {-1, -5}, { 0, -5}, { 1, -5}, { 2, -5},
+    // Tail tip / fin
+    { 0, -6},
 };
 constexpr int kCount = sizeof(kPattern) / sizeof(kPattern[0]);
+
+void stamp(Framebuffer& fb, int x, int y, uint16_t color, int radius) {
+    if (radius <= 1) {
+        fb.drawPixel(x, y, color);
+        return;
+    }
+    const int r2 = radius * radius;
+    for (int dy = -radius + 1; dy < radius; ++dy) {
+        for (int dx = -radius + 1; dx < radius; ++dx) {
+            if (dx * dx + dy * dy <= r2) {
+                fb.drawPixel(x + dx, y + dy, color);
+            }
+        }
+    }
+}
 
 }  // namespace
 
@@ -37,7 +62,10 @@ void draw(Framebuffer& fb, int cx, int cy, uint16_t color, float heading_deg,
     const float rad = (heading_deg - 90.0f) * static_cast<float>(M_PI) / 180.0f;
     const float sin_h = std::sin(rad);
     const float cos_h = std::cos(rad);
-    // right = (-sin_h, cos_h); forward = (cos_h, sin_h)
+    // Larger scales stamp discs so rotated wings don't dissolve into dots.
+    const int brush =
+        (scale > 1.15f) ? std::max(2, static_cast<int>(std::lround(scale * 0.7f)))
+                        : 1;
 
     for (int i = 0; i < kCount; ++i) {
         const float dx = static_cast<float>(kPattern[i][0]) * scale;
@@ -46,7 +74,7 @@ void draw(Framebuffer& fb, int cx, int cy, uint16_t color, float heading_deg,
             cx + static_cast<int>(std::lround(dx * (-sin_h) + dy * cos_h));
         const int sy =
             cy + static_cast<int>(std::lround(dx * cos_h + dy * sin_h));
-        fb.drawPixel(sx, sy, color);
+        stamp(fb, sx, sy, color, brush);
     }
 }
 
