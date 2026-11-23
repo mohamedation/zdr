@@ -250,8 +250,8 @@ void ADSBUIRenderer::renderAircraftDetail(const AircraftState& aircraft,
 
     const float hdg =
         aircraft.velocity_valid ? static_cast<float>(aircraft.heading) : 0.0f;
-    // Solid filled silhouette (glyph stamps brush discs above scale 1).
-    AircraftGlyph::draw(fb_, kRoseCx, kRoseCy, COLOR_ADSB_SELECTED, hdg, 2.6f);
+    // Filled swept-wing jet (AircraftGlyph switches shape above scale 1.8).
+    AircraftGlyph::draw(fb_, kRoseCx, kRoseCy, COLOR_ADSB_SELECTED, hdg, 3.0f);
 
     // Vertical split.
     drawVLine(kSplitX, 4, 146, COLOR_ADSB_TEXT);
