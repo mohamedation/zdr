@@ -1,5 +1,6 @@
 name: Build
 
+# Develop CI targets Cardputer Zero only (arm64). No host x86_64 build for now.
 on:
   push:
     branches: [ develop ]
@@ -8,35 +9,6 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  build-ubuntu:
-    # Pinned instead of ubuntu-latest so a runner image bump cannot silently
-    # change the compiler/CMake version underneath us.
-    runs-on: ubuntu-24.04
-
-    steps:
-    - uses: actions/checkout@v5
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake librtlsdr-dev libasound2-dev libpulse-dev libfreetype-dev nlohmann-json3-dev
-
-    - name: Configure CMake
-      run: |
-        mkdir build
-        cd build
-        cmake ..
-
-    - name: Build
-      run: |
-        cd build
-        make -j$(nproc)
-
-    - name: Check binary
-      run: |
-        ls -lh build/zdr
-        file build/zdr
-
   build-arm64:
     runs-on: ubuntu-24.04
 
