@@ -1528,6 +1528,13 @@ void ADSBPage::handleRadarScopeInput(AppKeyCode key) {
             openRadarView();
             break;
 
+        case APPKEY_M:
+            // Match profile chrome ("M Menu").
+            help_visible_ = true;
+            help_tab_ = 0;
+            help_setting_index_ = 0;
+            break;
+
         case APPKEY_L:
             settings_return_view_ = VIEW_RADAR_SCOPE;
             view_mode_ = VIEW_SETTINGS;

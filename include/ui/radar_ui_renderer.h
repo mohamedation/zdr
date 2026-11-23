@@ -119,16 +119,15 @@ private:
     static const int CALLSIGN_BOX_Y = 144;
     static const int NUM_TRAIL_LINES = 4;
 
-    // Full-screen radar scope (no list)
-    static const int SCOPE_STATUS_Y = 0;
-    static const int SCOPE_STATUS_H = 14;
-    static const int SCOPE_BOTTOM_Y = 156;
-    static const int SCOPE_BOTTOM_H = 14;
-    static const int SCOPE_RADAR_Y = 14;
-    static const int SCOPE_RADAR_H = 142;
+    // Full-screen radar scope — chrome matches vertical profile layout
+    static const int SCOPE_HEADER_Y = 2;
+    static const int SCOPE_BOTTOM_Y = 154;
+    static const int SCOPE_BOTTOM_H = 16;
+    static const int SCOPE_RADAR_Y = 22;
+    static const int SCOPE_RADAR_H = 132;  // 22 .. 154
     static const int SCOPE_CENTER_X = 160;
-    static const int SCOPE_CENTER_Y = 85;
-    static const int SCOPE_RADIUS = 68;
+    static const int SCOPE_CENTER_Y = 88;
+    static const int SCOPE_RADIUS = 58;
 
     /**
      * Draw range rings

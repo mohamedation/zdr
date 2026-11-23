@@ -1,5 +1,6 @@
 #include "ui/radar_ui_renderer.h"
 #include "ui/aircraft_glyph.h"
+#include "ui/ui_text.h"
 #include "font.h"
 #include <cstring>
 #include <cmath>
@@ -135,99 +136,77 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
                          COLOR_RADAR_SELECTED);
     }
 
-    // Bottom bar: callsign left, distance / alt right.
-    fb_.fillRect(0, SCOPE_BOTTOM_Y, 320, SCOPE_BOTTOM_H, COLOR_BG_DARK);
-    for (int x = 0; x < 320; ++x) {
-        fb_.drawPixel(x, SCOPE_BOTTOM_Y, COLOR_RADAR_GRID);
-    }
+    // Bottom chrome — same Caption layout as vertical profile.
+    fb_.fillRect(0, SCOPE_BOTTOM_Y, 320, SCOPE_BOTTOM_H, COLOR_BLACK);
+    drawHLine(2, SCOPE_BOTTOM_Y, 316, COLOR_RADAR_GRID);
 
     char callsign[9] = {0};
-    char right[32] = {0};
+    char info[24] = {0};
     if (selected_index >= 0 && selected_index < (int)aircraft.size()) {
         const auto& ac = aircraft[selected_index];
-        snprintf(callsign, sizeof(callsign), "%s", ac.callsign);
-        for (int k = (int)strlen(callsign) - 1; k >= 0 && callsign[k] == ' '; --k) {
-            callsign[k] = '\0';
+        int n = 0;
+        for (; n < 8 && ac.callsign[n] && ac.callsign[n] != ' '; ++n) {
+            callsign[n] = ac.callsign[n];
         }
-        if (callsign[0] == '\0') {
+        callsign[n] = '\0';
+        if (n == 0) {
             snprintf(callsign, sizeof(callsign), "%06X", ac.icao_addr);
         }
         if (ac.position_valid && ac.distance > 0.0f) {
             if (ac.altitude > 0) {
-                snprintf(right, sizeof(right), "%.0fkm  %dft",
-                         ac.distance, ac.altitude);
+                snprintf(info, sizeof(info), "%.0fkm %dft", ac.distance,
+                         ac.altitude);
             } else {
-                snprintf(right, sizeof(right), "%.0fkm", ac.distance);
+                snprintf(info, sizeof(info), "%.0fkm", ac.distance);
             }
         }
     } else {
-        snprintf(callsign, sizeof(callsign), "-----");
+        snprintf(callsign, sizeof(callsign), "---");
     }
 
-    if (!callsign_font_loaded_) {
-        callsign_font_loaded_ = true;
-        loadDefaultUiFont(callsign_font_, 19);
-    }
     const uint16_t callsign_color =
         (selected_index >= 0) ? COLOR_RADAR_SELECTED : COLOR_RADAR_TEXT;
-    if (callsign_font_.valid()) {
-        callsign_font_.draw(fb_, 4, SCOPE_BOTTOM_Y + 12, callsign,
-                            callsign_color);
-    } else {
-        drawText(4, SCOPE_BOTTOM_Y + 3, callsign, callsign_color);
+    uiText().draw(fb_, 6, SCOPE_BOTTOM_Y + 3, callsign, TextStyle::Caption,
+                  callsign_color);
+
+    if (info[0] != '\0') {
+        const int call_w = uiText().width(callsign, TextStyle::Caption);
+        uiText().draw(fb_, 6 + call_w + 8, SCOPE_BOTTOM_Y + 3, info,
+                      TextStyle::Caption, COLOR_RADAR_TEXT);
     }
 
-    if (right[0] != '\0') {
-        if (!ui_font_loaded_) {
-            ui_font_loaded_ = true;
-            loadDefaultUiFont(ui_font_, 12);
-        }
-        if (ui_font_.valid()) {
-            const int width = ui_font_.textWidth(right);
-            ui_font_.draw(fb_, 316 - width, SCOPE_BOTTOM_Y + 12, right,
-                          COLOR_RADAR_TEXT);
-        } else {
-            const int width = (int)strlen(right) * 7;
-            drawText(316 - width, SCOPE_BOTTOM_Y + 3, right, COLOR_RADAR_TEXT);
-        }
-    }
+    const char* hints = "Up/Dn Change  M Menu";
+    const int hints_w = uiText().width(hints, TextStyle::Caption);
+    uiText().draw(fb_, 320 - 8 - hints_w, SCOPE_BOTTOM_Y + 3, hints,
+                  TextStyle::Caption, COLOR_RADAR_TEXT);
 }
 
 void RadarUIRenderer::renderScopeStatusBar(int in_view_count, int total_count,
                                            float max_range,
                                            bool heading_valid, float heading_deg,
                                            bool heading_up) {
-    fb_.fillRect(0, SCOPE_STATUS_Y, 320, SCOPE_STATUS_H, COLOR_BG_DARK);
+    // Top chrome matches vertical profile: Caption title + track count.
+    fb_.fillRect(0, 0, 320, SCOPE_RADAR_Y, COLOR_BLACK);
 
-    char status[64];
-    snprintf(status, sizeof(status), "View:%d/%d  %.0fkm",
-             in_view_count, total_count, max_range);
+    char title[32];
+    snprintf(title, sizeof(title), "RADAR  %.0fkm", max_range);
+    uiText().draw(fb_, 6, SCOPE_HEADER_Y + 2, title, TextStyle::Caption,
+                  COLOR_RADAR_TEXT);
 
-    if (!ui_font_loaded_) {
-        ui_font_loaded_ = true;
-        loadDefaultUiFont(ui_font_, 12);
-    }
-    if (ui_font_.valid()) {
-        ui_font_.draw(fb_, 5, SCOPE_STATUS_Y + 11, status, COLOR_RADAR_TEXT);
-    } else {
-        drawText(5, SCOPE_STATUS_Y + 2, status, COLOR_RADAR_TEXT);
-    }
-
+    char trk[24];
     if (heading_valid) {
-        char heading[24];
-        snprintf(heading, sizeof(heading), "HDG %03.0f",
+        snprintf(trk, sizeof(trk), "Trk:%d/%d  HDG%03.0f", in_view_count,
+                 total_count,
                  heading_deg < 0.0f ? heading_deg + 360.0f : heading_deg);
-        const uint16_t color = heading_up ? COLOR_RADAR_SELECTED
-                                          : COLOR_RADAR_GRID;
-        if (ui_font_.valid()) {
-            const int width = ui_font_.textWidth(heading);
-            ui_font_.draw(fb_, 315 - width, SCOPE_STATUS_Y + 11,
-                          heading, color);
-        } else {
-            const int width = (int)strlen(heading) * 7;
-            drawText(315 - width, SCOPE_STATUS_Y + 2, heading, color);
-        }
+        (void)heading_up;
+    } else {
+        snprintf(trk, sizeof(trk), "Trk: %d/%d", in_view_count, total_count);
     }
+    const int trk_w = uiText().width(trk, TextStyle::Caption);
+    const uint16_t trk_color =
+        (heading_valid && heading_up) ? COLOR_RADAR_SELECTED : COLOR_RADAR_TEXT;
+    uiText().draw(fb_, 320 - 8 - trk_w, SCOPE_HEADER_Y + 2, trk,
+                  TextStyle::Caption, trk_color);
 }
 
 void RadarUIRenderer::renderStatusBar(int aircraft_count, float max_range,
@@ -513,12 +492,8 @@ void RadarUIRenderer::drawAircraftBlip(int cx, int cy, int radius,
 
     const uint16_t color = selected ? selected_color : COLOR_RADAR_BLIP;
     const float h = (velocity_valid ? heading : 0.0f) - rotation_deg;
+    // Selection is color-only (no ring) — same language as vertical profile.
     AircraftGlyph::draw(fb_, blip_x, blip_y, color, h, 1.0f);
-
-    // Soft halo around the selected aircraft so it reads on the rings.
-    if (selected) {
-        drawCircleApprox(blip_x, blip_y, 8, selected_color);
-    }
 }
 
 void RadarUIRenderer::drawCircleApprox(int cx, int cy, int radius, uint16_t color) {
