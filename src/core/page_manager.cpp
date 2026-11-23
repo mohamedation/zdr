@@ -515,18 +515,39 @@ void PageManager::drawPageMenu() {
     }
 
     const int count = (int)pages_.size();
-    const int tile_w = 70;
-    const int tile_h = 46;
-    const int gap = 6;
-    const int panel_w = count * tile_w + (count - 1) * gap + 18;
-    const int panel_h = 74;
+    const int gap = 4;
+    const int pad = 8;
+    const int hint_h = 14;
+    // Prefer one row; wrap to two when 70px tiles would overflow 320px.
+    int cols = count;
+    int rows = 1;
+    int tile_w = 70;
+    const int tile_h = 42;
+    auto rowWidth = [&](int c, int tw) {
+        return c * tw + (c - 1) * gap + 2 * pad;
+    };
+    if (rowWidth(cols, tile_w) > w) {
+        rows = 2;
+        cols = (count + 1) / 2;
+        tile_w = std::min(70, (w - 2 * pad - (cols - 1) * gap) / std::max(1, cols));
+        if (tile_w < 44) tile_w = 44;
+    }
+    const int panel_w = std::min(w - 4, rowWidth(cols, tile_w));
+    const int panel_h = rows * tile_h + (rows - 1) * gap + hint_h + 16;
     const int px = (w - panel_w) / 2;
     const int py = (h - panel_h) / 2;
     drawRoundedPanel(px, py, panel_w, panel_h, 10, COLOR_DIALOG_BG, 0.86f);
 
-    int x = px + 9;
-    const int tile_y = py + 6;
     for (int i = 0; i < count; ++i) {
+        const int row = i / cols;
+        const int col = i % cols;
+        // Center a short final row.
+        const int row_count = std::min(cols, count - row * cols);
+        const int row_w = row_count * tile_w + (row_count - 1) * gap;
+        const int row_x0 = px + (panel_w - row_w) / 2;
+        const int x = row_x0 + col * (tile_w + gap);
+        const int tile_y = py + 6 + row * (tile_h + gap);
+
         const bool selected = (i == (int)page_menu_index_);
         const bool current = (i == (int)current_page_index_);
 
@@ -538,23 +559,24 @@ void PageManager::drawPageMenu() {
 
         const uint16_t icon_color =
             selected ? COLOR_SPECTRUM : COLOR_TEXT_DIM;
-        drawPageIcon(i, x + (tile_w - 18) / 2, tile_y + 5, icon_color);
+        drawPageIcon(i, x + (tile_w - 18) / 2, tile_y + 3, icon_color);
 
         const char* name = pages_[i]->getName();
         const int label_w = (int)std::strlen(name) * FONT_6X8_WIDTH;
-        drawText6x8(x + (tile_w - label_w) / 2, tile_y + 30, name,
+        int label_x = x + (tile_w - label_w) / 2;
+        if (label_x < x + 1) label_x = x + 1;
+        drawText6x8(label_x, tile_y + 26, name,
                     selected ? COLOR_WHITE : COLOR_TEXT_DIM);
 
         if (current) {
             fb_.fillRect(x + tile_w / 2 - 1, tile_y + tile_h - 5, 2, 2,
                          selected ? COLOR_SPECTRUM : COLOR_TEXT_BRIGHT);
         }
-        x += tile_w + gap;
     }
 
     static const char* hint = "<> SELECT   ENTER OPEN   ESC CLOSE";
     const int hint_w = (int)std::strlen(hint) * FONT_6X8_WIDTH;
-    drawText6x8((w - hint_w) / 2, py + panel_h - 14, hint, COLOR_TEXT_DIM);
+    drawText6x8((w - hint_w) / 2, py + panel_h - 12, hint, COLOR_TEXT_DIM);
 }
 
 float PageManager::calculateDeltaTime() {
