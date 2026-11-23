@@ -198,86 +198,131 @@ void ADSBUIRenderer::renderAircraftDetail(const AircraftState& aircraft,
                                           uint32_t message_count,
                                           float message_rate,
                                           float gain) {
-    // Clear screen
-    fb_.clear(COLOR_BG_DARK);
+    (void)scroll_offset;
+    (void)aircraft_count;
+    (void)message_count;
+    (void)message_rate;
+    (void)gain;
 
-    // Define layout areas - give more space to PFD
-    const int PFD_X = 0;
-    const int PFD_Y = 0;
-    const int PFD_W = 180;  // Increased from 140 to 180
-    const int PFD_H = STATS_BAR_Y;  // 152px
+    fb_.clear(COLOR_BLACK);
 
-    const int INFO_X = 180;  // Moved from 140 to 180
-    const int INFO_Y = 0;
-    const int INFO_W = 140;  // Reduced from 180 to 140
-    const int INFO_H = STATS_BAR_Y;  // 152px
+    constexpr int kSplitX = 168;
+    constexpr int kRoseCx = 84;
+    constexpr int kRoseCy = 100;
+    constexpr int kRoseR = 48;
 
-    // Render PFD on left side
-    renderPFD(aircraft, PFD_X, PFD_Y, PFD_W, PFD_H);
-
-    // Build detail text lines
-    std::vector<std::string> lines;
-    char buffer[64];
-
-    snprintf(buffer, sizeof(buffer), "ICAO: %06X", aircraft.icao_addr);
-    lines.push_back(std::string(buffer));
-
-    if (aircraft.callsign[0] != '\0') {
-        snprintf(buffer, sizeof(buffer), "Call: %s", aircraft.callsign);
-        lines.push_back(std::string(buffer));
+    // Callsign (amber) + type under it.
+    char callsign[9] = {0};
+    int n = 0;
+    for (; n < 8 && aircraft.callsign[n] && aircraft.callsign[n] != ' '; ++n) {
+        callsign[n] = aircraft.callsign[n];
     }
-
-    if (aircraft.position_valid) {
-        snprintf(buffer, sizeof(buffer), "Lat: %.6f", aircraft.latitude);
-        lines.push_back(std::string(buffer));
-        snprintf(buffer, sizeof(buffer), "Lon: %.6f", aircraft.longitude);
-        lines.push_back(std::string(buffer));
-        snprintf(buffer, sizeof(buffer), "Alt: %d ft", aircraft.altitude);
-        lines.push_back(std::string(buffer));
+    callsign[n] = '\0';
+    if (n == 0) {
+        std::snprintf(callsign, sizeof(callsign), "%06X", aircraft.icao_addr);
     }
+    uiText().draw(fb_, 8, 6, callsign, TextStyle::Title, COLOR_ADSB_SELECTED);
+
+    const char* type =
+        (aircraft.type[0] != '\0') ? aircraft.type : "----";
+    uiText().draw(fb_, 8, 28, type, TextStyle::Caption, COLOR_ADSB_TEXT);
+
+    // Dashed compass rose + aircraft silhouette rotated to heading.
+    for (int deg = 0; deg < 360; deg += 10) {
+        if ((deg / 10) % 2 != 0) continue;
+        const float a0 = deg * static_cast<float>(M_PI) / 180.0f;
+        const float a1 = (deg + 6) * static_cast<float>(M_PI) / 180.0f;
+        fb_.drawLine(
+            kRoseCx + static_cast<int>(std::lround(std::sin(a0) * kRoseR)),
+            kRoseCy - static_cast<int>(std::lround(std::cos(a0) * kRoseR)),
+            kRoseCx + static_cast<int>(std::lround(std::sin(a1) * kRoseR)),
+            kRoseCy - static_cast<int>(std::lround(std::cos(a1) * kRoseR)),
+            COLOR_ADSB_TEXT);
+    }
+    uiText().draw(fb_, kRoseCx - 3, kRoseCy - kRoseR + 2, "N",
+                  TextStyle::Caption, COLOR_ADSB_TEXT);
+    uiText().draw(fb_, kRoseCx + kRoseR - 10, kRoseCy - 4, "E",
+                  TextStyle::Caption, COLOR_ADSB_TEXT);
+    uiText().draw(fb_, kRoseCx - 3, kRoseCy + kRoseR - 12, "S",
+                  TextStyle::Caption, COLOR_ADSB_TEXT);
+    uiText().draw(fb_, kRoseCx - kRoseR + 2, kRoseCy - 4, "W",
+                  TextStyle::Caption, COLOR_ADSB_TEXT);
+
+    const float hdg =
+        aircraft.velocity_valid ? static_cast<float>(aircraft.heading) : 0.0f;
+    AircraftGlyph::draw(fb_, kRoseCx, kRoseCy, COLOR_ADSB_SELECTED, hdg, 2.2f);
+
+    // Vertical split.
+    drawVLine(kSplitX, 4, 146, COLOR_ADSB_TEXT);
+
+    // Telemetry column.
+    auto row = [&](int y, const char* label, const char* value) {
+        uiText().draw(fb_, kSplitX + 10, y, label, TextStyle::Mono,
+                      COLOR_ADSB_TEXT);
+        uiText().draw(fb_, kSplitX + 58, y, value, TextStyle::Mono,
+                      COLOR_ADSB_TEXT);
+    };
+
+    char value[32];
+    int y = 10;
+    constexpr int kRow = 18;
+
+    if (aircraft.position_valid && aircraft.altitude != 0) {
+        std::snprintf(value, sizeof(value), "%d FT", aircraft.altitude);
+    } else {
+        std::snprintf(value, sizeof(value), "---");
+    }
+    row(y, "ALT", value);
+    y += kRow;
 
     if (aircraft.velocity_valid) {
-        snprintf(buffer, sizeof(buffer), "Spd: %d kt", aircraft.speed);
-        lines.push_back(std::string(buffer));
-        snprintf(buffer, sizeof(buffer), "Hdg: %d deg", aircraft.heading);
-        lines.push_back(std::string(buffer));
-        snprintf(buffer, sizeof(buffer), "V/S: %d fpm", aircraft.vertical_rate);
-        lines.push_back(std::string(buffer));
+        std::snprintf(value, sizeof(value), "%d KT", aircraft.speed);
+    } else {
+        std::snprintf(value, sizeof(value), "---");
     }
+    row(y, "SPD", value);
+    y += kRow;
 
-    if (aircraft.distance > 0) {
-        snprintf(buffer, sizeof(buffer), "Dist: %.1f km", aircraft.distance);
-        lines.push_back(std::string(buffer));
-        snprintf(buffer, sizeof(buffer), "Bear: %.0f deg", aircraft.bearing);
-        lines.push_back(std::string(buffer));
+    if (aircraft.velocity_valid) {
+        std::snprintf(value, sizeof(value), "%+d FPM", aircraft.vertical_rate);
+    } else {
+        std::snprintf(value, sizeof(value), "---");
     }
+    row(y, "V/S", value);
+    y += kRow;
 
-    snprintf(buffer, sizeof(buffer), "Msgs: %u", aircraft.message_count);
-    lines.push_back(std::string(buffer));
-
-    time_t now = time(nullptr);
-    time_t elapsed = now - aircraft.last_seen;
-    snprintf(buffer, sizeof(buffer), "Seen: %ld s", (long)elapsed);
-    lines.push_back(std::string(buffer));
-
-    // Clear info area
-    fb_.fillRect(INFO_X, INFO_Y, INFO_W, INFO_H, COLOR_BG_DARK);
-
-    // Render scrollable text on right side
-    const int LINE_HEIGHT = uiText().lineHeight(TextStyle::Body) + 3;
-    int y = INFO_Y + 2 - scroll_offset;
-
-    for (size_t i = 0; i < lines.size(); i++) {
-        if (y + LINE_HEIGHT > INFO_Y && y < STATS_BAR_Y) {
-            uiText().draw(fb_, INFO_X + 5, y, lines[i].c_str(), TextStyle::Body,
-                          COLOR_ADSB_TEXT);
-        }
-        y += LINE_HEIGHT;
+    if (aircraft.distance > 0.0f) {
+        std::snprintf(value, sizeof(value), "%.1f KM", aircraft.distance);
+    } else {
+        std::snprintf(value, sizeof(value), "---");
     }
+    row(y, "DIST", value);
+    y += kRow;
 
-    // Render bottom status bar
-    fb_.fillRect(0, STATS_BAR_Y, 320, STATS_BAR_H, COLOR_ADSB_STATUSBAR_BG);
-    drawText(2, STATS_BAR_Y + 2, "Enter:Radar  Up/Down:Scroll", COLOR_ADSB_STATUSBAR_TEXT);
+    if (aircraft.distance > 0.0f) {
+        float brg = aircraft.bearing;
+        if (brg < 0.0f) brg += 360.0f;
+        std::snprintf(value, sizeof(value), "%03.0f DEG", brg);
+    } else {
+        std::snprintf(value, sizeof(value), "---");
+    }
+    row(y, "BRG", value);
+    y += kRow;
+
+    std::snprintf(value, sizeof(value), "%06X", aircraft.icao_addr);
+    row(y, "ICAO", value);
+    y += kRow;
+
+    if (aircraft.squawk[0] != '\0') {
+        std::snprintf(value, sizeof(value), "%s", aircraft.squawk);
+    } else {
+        std::snprintf(value, sizeof(value), "----");
+    }
+    row(y, "SQWK", value);
+
+    drawHLine(2, STATS_BAR_Y, 316, COLOR_RADAR_GRID);
+    uiText().draw(fb_, 6, STATS_BAR_Y + 3, "Enter Radar  Esc List",
+                  TextStyle::Caption, COLOR_ADSB_TEXT);
 }
 
 void ADSBUIRenderer::drawDashedHLine(int x, int y, int length, uint16_t color,

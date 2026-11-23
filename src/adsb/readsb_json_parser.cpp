@@ -191,6 +191,18 @@ bool READSBJSONParser::parseFile(const std::string& json_path,
             extractString(flight_field, ac.callsign, sizeof(ac.callsign));
         }
 
+        // ICAO type designator (optional), e.g. "A359"
+        const char* type_field = findField(obj_str, "t");
+        if (type_field) {
+            extractString(type_field, ac.type, sizeof(ac.type));
+        }
+
+        // Mode A squawk (optional)
+        const char* squawk_field = findField(obj_str, "squawk");
+        if (squawk_field) {
+            extractString(squawk_field, ac.squawk, sizeof(ac.squawk));
+        }
+
         // Parse altitude (optional)
         const char* alt_field = findField(obj_str, "alt_baro");
         if (alt_field) {

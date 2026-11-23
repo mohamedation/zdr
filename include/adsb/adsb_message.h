@@ -30,6 +30,8 @@ enum ADSBTypeCode {
 struct AircraftState {
     uint32_t icao_addr;          // 24-bit ICAO address
     char callsign[9];            // 8-char callsign + null terminator
+    char type[8];                // ICAO type designator from readsb "t" (e.g. A359)
+    char squawk[5];              // Mode A squawk (4 digits)
 
     // Position
     double latitude;             // Degrees
@@ -56,6 +58,8 @@ struct AircraftState {
                       velocity_valid(false), last_seen(0), message_count(0),
                       distance(0), bearing(0) {
         callsign[0] = '\0';
+        type[0] = '\0';
+        squawk[0] = '\0';
     }
 };
 
