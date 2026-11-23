@@ -17,12 +17,12 @@
  *
  * One 512x512 or 1024x1024 patch is fetched as a grid of 256px map tiles,
  * cropped around the observer and cached in ~/.cache/zdr/radar_map/.
- * By default the 1024 patch fills the whole display; setting
- * map.full_screen=false uses the smaller 512 patch clipped to the scope.
- * The patch is scaled/rotated while drawing, so radar zoom and heading-up
- * need no image rotation pass. Downloads happen on a worker thread; the radar
- * keeps using the previous patch (or the plain dark background) until a new
- * one is ready.
+ * Patches are fetched large enough to cover the full display so radar zoom
+ * can dive past the range ring. Callers choose circle clip vs full-frame
+ * blit via draw(..., fill_frame). The patch is scaled/rotated while drawing,
+ * so radar zoom and heading-up need no image rotation pass. Downloads happen
+ * on a worker thread; the radar keeps using the previous patch (or the plain
+ * dark background) until a new one is ready.
  *
  * The default provider is Esri "World Dark Gray Base": a dark basemap with
  * no text labels, which keeps the green sweep and white aircraft readable.
@@ -56,12 +56,18 @@ public:
     void reload();
 
     /**
-     * Draw the cached patch inside the radar circle.
+     * Draw the cached patch under the scope.
      * @param max_range_km Range represented by the outer ring
      * @param rotation_deg Compass rotation currently used by the scope
+     * @param fill_frame When true, paint the whole framebuffer (dive-in
+     *        zoom past the range ring). When false, clip to the circle.
      */
     void draw(Framebuffer& fb, int cx, int cy, int radius,
-              float max_range_km, float rotation_deg) const;
+              float max_range_km, float rotation_deg,
+              bool fill_frame = false) const;
+
+    /** True when patches are fetched for full-display coverage. */
+    bool fullScreen() const { return full_screen_; }
 
 private:
     struct Image {
@@ -118,9 +124,9 @@ private:
     unsigned int generation_ = 0;    // guarded by job_mutex_
     bool gcj02_ = false;             // AMap tiles use GCJ-02
     bool dark_ = false;              // invert/desaturate a light map
-    bool full_screen_ = false;       // circle-only by default (zDR chrome)
-    int patch_size_ = 512;           // 1024 when full_screen
-    int grid_tiles_ = 3;             // 5 for 1024
+    bool full_screen_ = true;        // fetch coverage for whole display
+    int patch_size_ = 1024;          // 512 only if full_screen is forced off
+    int grid_tiles_ = 5;             // 3 for 512
     float dim_ = 0.90f;
     int cache_hours_ = 168;
 };

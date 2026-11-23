@@ -422,7 +422,8 @@ void AisUIRenderer::renderPlot(
     const bool has_map =
         (map != nullptr && map->hasImage() && station_valid);
     if (has_map) {
-        map->draw(fb_, cx, cy, radius, range_nm * 1.852f, 0.0f);
+        map->draw(fb_, cx, cy, radius, range_nm * 1.852f, 0.0f,
+                  /*fill_frame=*/true);
     }
 #endif
 
@@ -464,11 +465,19 @@ void AisUIRenderer::renderPlot(
     fb_.drawLine(cx - 3, cy + 3, cx + 3, cy + 3, COLOR_ADSB_TEXT);
     fb_.drawPixel(cx, cy, COLOR_ADSB_TEXT);
 
+    // Dive-in: keep vessels that plot past the ring but still on-screen.
+    const int max_dx = std::max(cx, 319 - cx);
+    const int max_dy = std::max(cy - SCOPE_RADAR_Y, (SCOPE_BOTTOM_Y - 1) - cy);
+    const float plot_limit_nm =
+        range_nm *
+        (std::sqrt(static_cast<float>(max_dx * max_dx + max_dy * max_dy)) /
+         static_cast<float>(radius));
+
     int drawn = 0;
     for (int index = 0; index < static_cast<int>(vessels.size()); ++index) {
         const ais::VesselState& vessel = vessels[static_cast<size_t>(index)];
         if (!vessel.has_position || vessel.distance_nm < 0.0f) continue;
-        if (vessel.distance_nm > range_nm * 1.05f) continue;
+        if (vessel.distance_nm > plot_limit_nm) continue;
 
         const int x = cx + static_cast<int>(std::lround(
             std::sin(vessel.bearing_deg * kPi / 180.0) *
@@ -481,7 +490,7 @@ void AisUIRenderer::renderPlot(
             const float distance = distanceNm(
                 station_latitude, station_longitude, vessel.trail[t].first,
                 vessel.trail[t].second);
-            if (distance > range_nm) continue;
+            if (distance > plot_limit_nm) continue;
             const float bearing = bearingDeg(
                 station_latitude, station_longitude, vessel.trail[t].first,
                 vessel.trail[t].second);

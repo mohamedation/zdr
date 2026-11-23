@@ -1,6 +1,7 @@
 #include "adsb/readsb_controller.h"
 #include <iostream>
 #include <cstring>
+#include <cerrno>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -32,10 +33,13 @@ bool READSBController::createOutputDirectory() {
 }
 
 bool READSBController::start(int gain) {
-    if (running_) {
+    // Reap zombies / clear stale flags before trusting running_.
+    if (isRunning()) {
         std::cout << "readsb already running" << std::endl;
         return true;
     }
+    running_ = false;
+    readsb_pid_ = -1;
 
     // Create output directory
     if (!createOutputDirectory()) {
@@ -132,14 +136,29 @@ void READSBController::stop() {
     readsb_pid_ = -1;
 }
 
-bool READSBController::isRunning() const {
+bool READSBController::isRunning() {
     if (!running_ || readsb_pid_ < 0) {
+        running_ = false;
+        readsb_pid_ = -1;
         return false;
     }
 
-    // Check if process exists without reaping it
-    // kill(pid, 0) returns 0 if process exists, -1 if not
-    return kill(readsb_pid_, 0) == 0;
+    // Reap exited children. After another page runs `pkill -9 readsb`, the
+    // PID can linger as a zombie — kill(pid, 0) still succeeds until waitpid.
+    int status = 0;
+    const pid_t waited = waitpid(readsb_pid_, &status, WNOHANG);
+    if (waited == readsb_pid_ || (waited < 0 && errno == ECHILD)) {
+        running_ = false;
+        readsb_pid_ = -1;
+        return false;
+    }
+
+    if (kill(readsb_pid_, 0) != 0) {
+        running_ = false;
+        readsb_pid_ = -1;
+        return false;
+    }
+    return true;
 }
 
 std::string READSBController::getJSONPath() const {

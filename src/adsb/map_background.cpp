@@ -216,7 +216,9 @@ void MapBackground::loadConfig() {
     const std::string configured_url = map.value("url_template", "");
     const std::string configured_attr = map.value("attribution", "");
     proxy_ = map.value("proxy", "");
-    full_screen_ = map.value("full_screen", false);
+    // Default on: basemap covers the whole display so zoom can dive past
+    // the range ring. Split-radar still passes fill_frame=false to clip.
+    full_screen_ = map.value("full_screen", true);
     patch_size_ = full_screen_ ? 1024 : 512;
     grid_tiles_ = patch_size_ / kTileSize + 1;
     dim_ = (float)map.value("dim", 0.90);
@@ -696,7 +698,8 @@ bool MapBackground::buildJob(const Job& job, Image& out) {
 }
 
 void MapBackground::draw(Framebuffer& fb, int cx, int cy, int radius,
-                         float max_range_km, float rotation_deg) const {
+                         float max_range_km, float rotation_deg,
+                         bool fill_frame) const {
     if (radius <= 0 || max_range_km <= 0.0f) return;
 
     std::shared_ptr<const Image> image;
@@ -713,10 +716,10 @@ void MapBackground::draw(Framebuffer& fb, int cx, int cy, int radius,
     const int half_h = image->height / 2;
 
     // The patch must cover the whole circle, or the whole screen when
-    // full-screen mode is on.
+    // filling the frame (dive-in past the range ring).
     const double cover_km = (image->width / 2.0) * image->m_per_px / 1000.0;
     double needed_km = max_range_km;
-    if (full_screen_) {
+    if (fill_frame) {
         const int max_dx = std::max(cx, fb.getWidth() - 1 - cx);
         const int max_dy = std::max(cy, fb.getHeight() - 1 - cy);
         const double corner_px =
@@ -730,12 +733,12 @@ void MapBackground::draw(Framebuffer& fb, int cx, int cy, int radius,
     const float cosr = (float)std::cos(rad);
     const float sinr = (float)std::sin(rad);
 
-    const int y0 = full_screen_ ? 0 : std::max(0, cy - radius);
-    const int y1 = full_screen_ ? fb.getHeight() - 1
-                                : std::min(fb.getHeight() - 1, cy + radius);
-    const int x0 = full_screen_ ? 0 : std::max(0, cx - radius);
-    const int x1 = full_screen_ ? fb.getWidth() - 1
-                                : std::min(fb.getWidth() - 1, cx + radius);
+    const int y0 = fill_frame ? 0 : std::max(0, cy - radius);
+    const int y1 = fill_frame ? fb.getHeight() - 1
+                              : std::min(fb.getHeight() - 1, cy + radius);
+    const int x0 = fill_frame ? 0 : std::max(0, cx - radius);
+    const int x1 = fill_frame ? fb.getWidth() - 1
+                              : std::min(fb.getWidth() - 1, cx + radius);
     const int r2 = radius * radius;
 
     for (int y = y0; y <= y1; ++y) {
@@ -743,7 +746,7 @@ void MapBackground::draw(Framebuffer& fb, int cx, int cy, int radius,
         const int dy2 = dy * dy;
         for (int x = x0; x <= x1; ++x) {
             const int dx = x - cx;
-            if (!full_screen_ && dx * dx + dy2 > r2) continue;
+            if (!fill_frame && dx * dx + dy2 > r2) continue;
 
             // Screen -> world: heading-up tilts the map clockwise by the
             // compass heading before sampling the (north-up) patch.

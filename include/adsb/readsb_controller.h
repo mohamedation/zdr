@@ -29,10 +29,11 @@ public:
     void stop();
 
     /**
-     * Check if readsb is running
-     * @return true if process is alive
+     * Check if readsb is running.
+     * Reaps a dead/zombie child (e.g. after another page pkill'd it) and
+     * clears internal state so a later start() actually forks again.
      */
-    bool isRunning() const;
+    bool isRunning();
 
     /**
      * Get path to aircraft.json file

@@ -110,8 +110,8 @@ bool AppConfig::setDefaults() {
     set_if_missing(imu, "invert", false);
 
     // Optional Web-Mercator basemap under ADS-B / AIS scopes.
-    // full_screen=false keeps the map clipped to the radar circle so the
-    // no-fill caption chrome stays readable.
+    // full_screen fetches a patch large enough to fill the display so zoom
+    // can dive past the range ring (split radar still clips to the circle).
     nlohmann::json& map = section("map");
     set_if_missing(map, "enabled", true);
     set_if_missing(map, "provider", "esri_dark");
@@ -120,7 +120,13 @@ bool AppConfig::setDefaults() {
     set_if_missing(map, "proxy", "");
     set_if_missing(map, "dim", 0.90);
     set_if_missing(map, "cache_hours", 168);
-    set_if_missing(map, "full_screen", false);
+    set_if_missing(map, "full_screen", true);
+    // Prefer full-display coverage even on older configs that defaulted off.
+    if (map.contains("full_screen") && map["full_screen"].is_boolean() &&
+        !map["full_screen"].get<bool>()) {
+        map["full_screen"] = true;
+        changed = true;
+    }
 
     nlohmann::json& ais = section("ais");
     set_if_missing(ais, "udp_export", false);

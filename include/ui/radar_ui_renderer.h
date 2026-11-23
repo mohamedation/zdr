@@ -33,7 +33,7 @@ public:
      * @param observer_lon Observer longitude
      * @param selected_index Index of selected aircraft (-1 for none)
      * @param scroll_offset Scroll offset for aircraft list
-     * @param blink_state Blink state for selected aircraft (true = visible)
+     * @param blink_state Unused (kept for API stability; selection is solid)
      * @param heading_deg Heading placed at the top of the scope (0 = north up)
      */
     void renderRadarDisplay(const std::vector<AircraftState>& aircraft,
@@ -48,7 +48,8 @@ public:
                            MapBackground* map = nullptr);
 
     /**
-     * Full-screen radar (no list). Aircraft beyond max_range are omitted.
+     * Full-screen radar (no list). Map fills the display; aircraft out to
+     * the screen edges stay visible when zoomed past the range ring.
      * Bottom bar: callsign on the left; range / distance on the right.
      */
     void renderRadarScope(const std::vector<AircraftState>& aircraft,
@@ -60,7 +61,11 @@ public:
 
     /** Draw optional Web-Mercator basemap under the scope (before rings). */
     void drawMapBackground(MapBackground& map, int cx, int cy, int radius,
-                           float max_range, float heading_deg = 0.0f);
+                           float max_range, float heading_deg = 0.0f,
+                           bool fill_frame = false);
+
+    /** Max distance (km) that still plots on the full-screen scope. */
+    static float scopePlotLimitKm(float max_range);
 
     /**
      * Render top status bar

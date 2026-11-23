@@ -19,7 +19,7 @@ RadarUIRenderer::~RadarUIRenderer() {
 
 void RadarUIRenderer::drawMapBackground(MapBackground& map, int cx, int cy,
                                         int radius, float max_range,
-                                        float heading_deg) {
+                                        float heading_deg, bool fill_frame) {
 #ifdef ZDR_UI_PREVIEW
     (void)map;
     (void)cx;
@@ -27,9 +27,21 @@ void RadarUIRenderer::drawMapBackground(MapBackground& map, int cx, int cy,
     (void)radius;
     (void)max_range;
     (void)heading_deg;
+    (void)fill_frame;
 #else
-    map.draw(fb_, cx, cy, radius, max_range, heading_deg);
+    map.draw(fb_, cx, cy, radius, max_range, heading_deg, fill_frame);
 #endif
+}
+
+float RadarUIRenderer::scopePlotLimitKm(float max_range) {
+    if (max_range <= 0.0f) return 0.0f;
+    // Farthest visible pixel from scope center within the plot band.
+    const int max_dx = std::max(SCOPE_CENTER_X, 319 - SCOPE_CENTER_X);
+    const int max_dy = std::max(SCOPE_CENTER_Y - SCOPE_RADAR_Y,
+                                (SCOPE_BOTTOM_Y - 1) - SCOPE_CENTER_Y);
+    const float corner =
+        std::sqrt(static_cast<float>(max_dx * max_dx + max_dy * max_dy));
+    return max_range * (corner / static_cast<float>(SCOPE_RADIUS));
 }
 
 void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircraft,
@@ -50,10 +62,10 @@ void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircr
     fb_.fillRect(0, RADAR_Y, 320, RADAR_H, COLOR_BLACK);
 
 #ifndef ZDR_UI_PREVIEW
-    // Basemap under the scope (list stays black).
+    // Basemap under the scope circle only (keep the list panel black).
     if (map != nullptr && map->hasImage()) {
         drawMapBackground(*map, RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
-                          max_range, heading_deg);
+                          max_range, heading_deg, /*fill_frame=*/false);
     }
 #else
     (void)map;
@@ -71,13 +83,11 @@ void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircr
     drawRingLabels(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
                    NUM_RANGE_RINGS, max_range);
 
+    (void)blink_state;  // Selection stays solid amber (no flash).
     for (size_t i = 0; i < aircraft.size(); i++) {
         const auto& ac = aircraft[i];
         if (ac.position_valid && ac.distance > 0) {
             const bool is_selected = (i == (size_t)selected_index);
-            if (is_selected && !blink_state) {
-                continue;
-            }
             drawAircraftBlip(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
                              ac.distance, ac.bearing, ac.heading,
                              ac.velocity_valid, max_range, is_selected,
@@ -139,9 +149,10 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
     fb_.fillRect(0, SCOPE_RADAR_Y, 320, SCOPE_RADAR_H, COLOR_BLACK);
 
 #ifndef ZDR_UI_PREVIEW
+    // Full-display basemap: zoom scales past the range ring (dive-in).
     if (map != nullptr && map->hasImage()) {
         drawMapBackground(*map, SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
-                          max_range, heading_deg);
+                          max_range, heading_deg, /*fill_frame=*/true);
     }
 #else
     (void)map;
@@ -154,10 +165,11 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
     drawRingLabels(SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
                    NUM_RANGE_RINGS, max_range);
 
+    const float plot_limit = scopePlotLimitKm(max_range);
     for (size_t i = 0; i < aircraft.size(); i++) {
         const auto& ac = aircraft[i];
         if (!ac.position_valid || ac.distance <= 0.0f) continue;
-        if (ac.distance > max_range) continue;
+        if (ac.distance > plot_limit) continue;
 
         const bool is_selected = (i == (size_t)selected_index);
         drawAircraftBlip(SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,

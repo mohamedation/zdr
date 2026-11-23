@@ -128,6 +128,9 @@ void ADSBPage::onEnter() {
         sdr_.close();
         std::cout << "ADSBPage: Closed SDR device" << std::endl;
 
+        // Other pages pkill readsb; clear orphans so a fresh fork can open the
+        // dongle (isRunning() already reaped our own zombie child).
+        std::system("pkill -9 readsb 2>/dev/null");
         std::system("pkill -9 acarsdec 2>/dev/null");
         std::system("pkill -9 rtl_433 2>/dev/null");
 
@@ -201,15 +204,6 @@ void ADSBPage::update(float delta_time) {
     if (isRadarView()) {
         if (imu_enabled_) imu_.update(delta_time);
         updateRadarRotation(delta_time);
-
-        // Blink only on the split radar (scope keeps selection solid amber).
-        if (view_mode_ == VIEW_RADAR) {
-            blink_timer_ += delta_time;
-            if (blink_timer_ >= 0.5f) {
-                blink_timer_ -= 0.5f;
-                blink_state_ = !blink_state_;
-            }
-        }
 
         // Delay the first map fetch so the range has settled from live traffic.
         radar_view_age_ += delta_time;
@@ -470,10 +464,13 @@ void ADSBPage::zoomProfile(int direction) {
 
 void ADSBPage::collectRadarVisibleIndices(std::vector<int>& out) const {
     out.clear();
+    // Include craft past the range ring but still on-screen (dive-in zoom).
+    const float plot_limit =
+        RadarUIRenderer::scopePlotLimitKm(radar_scope_range_);
     for (size_t i = 0; i < aircraft_list_.size(); ++i) {
         const auto& ac = aircraft_list_[i];
         if (!ac.position_valid || ac.distance <= 0.0f) continue;
-        if (ac.distance > radar_scope_range_) continue;
+        if (ac.distance > plot_limit) continue;
         out.push_back(static_cast<int>(i));
     }
 }

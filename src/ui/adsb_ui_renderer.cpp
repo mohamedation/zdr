@@ -250,7 +250,8 @@ void ADSBUIRenderer::renderAircraftDetail(const AircraftState& aircraft,
 
     const float hdg =
         aircraft.velocity_valid ? static_cast<float>(aircraft.heading) : 0.0f;
-    AircraftGlyph::draw(fb_, kRoseCx, kRoseCy, COLOR_ADSB_SELECTED, hdg, 2.2f);
+    // Solid filled silhouette (glyph stamps brush discs above scale 1).
+    AircraftGlyph::draw(fb_, kRoseCx, kRoseCy, COLOR_ADSB_SELECTED, hdg, 2.6f);
 
     // Vertical split.
     drawVLine(kSplitX, 4, 146, COLOR_ADSB_TEXT);
@@ -404,43 +405,41 @@ void ADSBUIRenderer::renderVerticalProfile(
         }
     }
 
-    // Grid lines only on FL100 steps (FL100, FL200, …). First line is at
-    // least FL100 so low traffic can sit below it without its own line.
-    // Highest line is ceil(max FL / 100) * 100 (e.g. FL410 → FL500).
-    constexpr float kFlStep = 100.0f;
-    constexpr float kMinFirstFl = 100.0f;
-
-    float first_fl = kMinFirstFl;
+    // Pick a nice FL step from the altitude span so ~4–6 equally spaced
+    // lines sit between the lowest and highest in-range traffic.
+    // (Previously stepped by FL100, so FL300–FL390 only drew FL300 + FL400.)
+    float first_fl = 0.0f;
     float last_fl = 400.0f;
+    float fl_step = 100.0f;
     if (have_alt) {
         const float min_fl = data_min / 100.0f;
         const float max_fl = data_max / 100.0f;
-        first_fl = std::floor(min_fl / kFlStep) * kFlStep;
-        if (first_fl < kMinFirstFl) first_fl = kMinFirstFl;
-        last_fl = std::ceil(max_fl / kFlStep) * kFlStep;
-        if (last_fl < first_fl) last_fl = first_fl;
+        float span_fl = max_fl - min_fl;
+        if (span_fl < 10.0f) span_fl = 10.0f;
+
+        static const float kNice[] = {5.0f, 10.0f, 20.0f, 25.0f, 50.0f, 100.0f};
+        fl_step = 100.0f;
+        for (float candidate : kNice) {
+            const float lines = span_fl / candidate;
+            if (lines >= 3.0f && lines <= 7.0f) {
+                fl_step = candidate;
+                break;
+            }
+            if (lines > 7.0f) fl_step = candidate;  // keep coarsening
+        }
+
+        first_fl = std::floor(min_fl / fl_step) * fl_step;
+        last_fl = std::ceil(max_fl / fl_step) * fl_step;
+        if (last_fl <= first_fl) last_fl = first_fl + fl_step;
+        // Pad one step of headroom so marks aren't glued to the frame.
+        first_fl = std::max(0.0f, first_fl - fl_step);
+        last_fl = last_fl + fl_step;
     }
 
-    const float first_ft = first_fl * 100.0f;
-    const float last_ft = last_fl * 100.0f;
-
-    // Linear scale spans the labeled FL band and any traffic outside it.
-    float alt_lo = first_ft;
-    float alt_hi = last_ft;
-    if (have_alt) {
-        if (data_min < first_ft) {
-            alt_lo = std::max(0.0f, data_min - 800.0f);
-        }
-        if (data_max > last_ft) {
-            alt_hi = data_max + 800.0f;
-        } else {
-            alt_hi = last_ft;
-        }
-        // Keep a little headroom above the top grid line when traffic sits on it.
-        if (data_max >= last_ft - 200.0f) {
-            alt_hi = std::max(alt_hi, last_ft + 800.0f);
-        }
-    }
+    // Scale Y exactly to the labeled FL band so every grid line is evenly
+    // spaced on screen.
+    float alt_lo = first_fl * 100.0f;
+    float alt_hi = last_fl * 100.0f;
     if (alt_hi <= alt_lo) alt_hi = alt_lo + 10000.0f;
 
     auto altToY = [&](float alt_ft) -> int {
@@ -456,8 +455,8 @@ void ADSBUIRenderer::renderVerticalProfile(
         return kPlotL + static_cast<int>(t * plot_w + 0.5f);
     };
 
-    // Equally spaced FL100 grid (radar-style dashes). No per-craft lines.
-    for (float fl = first_fl; fl <= last_fl + 0.5f; fl += kFlStep) {
+    // Equally spaced FL grid (radar-style dashes) between data min/max.
+    for (float fl = first_fl; fl <= last_fl + 0.05f; fl += fl_step) {
         const float alt_ft = fl * 100.0f;
         const int y = altToY(alt_ft);
         drawDashedHLine(kPlotL, y, plot_w, COLOR_RADAR_GRID, kDash, kGap);
