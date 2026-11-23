@@ -899,7 +899,8 @@ void ADSBPage::renderCurrentView() {
                                      blink_state_, radar_rotation_);
 
     } else if (view_mode_ == VIEW_RADAR_SCOPE) {
-        fb_.clear(COLOR_RADAR_BG);
+        // Flat black canvas like vertical profile (no tinted chrome bars).
+        fb_.clear(COLOR_BLACK);
 
         std::vector<int> visible;
         collectRadarVisibleIndices(visible);

@@ -114,7 +114,8 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
                                        float heading_deg) {
     (void)sweep_angle;  // Cosmetic beam removed; arg kept for API stability.
 
-    fb_.fillRect(0, SCOPE_RADAR_Y, 320, SCOPE_RADAR_H, COLOR_RADAR_BG);
+    // Same flat black canvas as vertical profile (no bar backgrounds).
+    fb_.fillRect(0, SCOPE_RADAR_Y, 320, SCOPE_RADAR_H, COLOR_BLACK);
 
     drawRangeRings(SCOPE_CENTER_X, SCOPE_CENTER_Y, SCOPE_RADIUS,
                    NUM_RANGE_RINGS, max_range, heading_deg);
@@ -136,8 +137,7 @@ void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraf
                          COLOR_RADAR_SELECTED);
     }
 
-    // Bottom chrome — same Caption layout as vertical profile.
-    fb_.fillRect(0, SCOPE_BOTTOM_Y, 320, SCOPE_BOTTOM_H, COLOR_BLACK);
+    // Bottom chrome — text only on the shared black canvas (profile style).
     drawHLine(2, SCOPE_BOTTOM_Y, 316, COLOR_RADAR_GRID);
 
     char callsign[9] = {0};
@@ -185,9 +185,8 @@ void RadarUIRenderer::renderScopeStatusBar(int in_view_count, int total_count,
                                            float max_range,
                                            bool heading_valid, float heading_deg,
                                            bool heading_up) {
-    // Top chrome matches vertical profile: Caption title + track count.
-    fb_.fillRect(0, 0, 320, SCOPE_RADAR_Y, COLOR_BLACK);
-
+    // Top chrome matches vertical profile: Caption on the shared canvas,
+    // no separate bar fill.
     char title[32];
     snprintf(title, sizeof(title), "RADAR  %.0fkm", max_range);
     uiText().draw(fb_, 6, SCOPE_HEADER_Y + 2, title, TextStyle::Caption,
