@@ -62,8 +62,9 @@ private:
     enum ViewMode {
         VIEW_LIST,
         VIEW_DETAIL,
-        VIEW_RADAR,        // list + radar
-        VIEW_RADAR_SCOPE,  // radar only
+        VIEW_RADAR,              // list + radar
+        VIEW_RADAR_SCOPE,        // radar only
+        VIEW_VERTICAL_PROFILE,   // altitude vs distance
         VIEW_SETTINGS
     };
     ViewMode view_mode_;
@@ -97,6 +98,7 @@ private:
     // Enter-key view cycle helpers
     void openRadarView();
     void openRadarScopeView();
+    void openVerticalProfileView();
 
     // Full-screen radar: selection is limited to aircraft inside the
     // current zoom range.
@@ -106,6 +108,15 @@ private:
     void ensureRadarScopeSelection();
     void cycleRadarScopeSelection(int direction);
     void zoomRadarScope(int direction);
+
+    // Vertical profile: same range presets as radar scope; selection is
+    // limited to aircraft with altitude inside the current range.
+    float profile_range_;
+    int profile_range_index_;
+    void collectProfileVisibleIndices(std::vector<int>& out) const;
+    void ensureProfileSelection();
+    void cycleProfileSelection(int direction);
+    void zoomProfile(int direction);
 
     // GPS position source
     GpsLocator gps_;
@@ -164,6 +175,7 @@ private:
     void handleDetailInput(AppKeyCode key);
     void handleRadarInput(AppKeyCode key);
     void handleRadarScopeInput(AppKeyCode key);
+    void handleVerticalProfileInput(AppKeyCode key);
     void handleSettingsInput(AppKeyCode key);
     bool isRadarView() const {
         return view_mode_ == VIEW_RADAR || view_mode_ == VIEW_RADAR_SCOPE;

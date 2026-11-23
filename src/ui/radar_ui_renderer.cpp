@@ -1,4 +1,5 @@
 #include "ui/radar_ui_renderer.h"
+#include "ui/aircraft_glyph.h"
 #include "font.h"
 #include <cstring>
 #include <cmath>
@@ -510,43 +511,9 @@ void RadarUIRenderer::drawAircraftBlip(int cx, int cy, int radius,
     polarToCartesian(distance, bearing - rotation_deg, max_range,
                      cx, cy, radius, &blip_x, &blip_y);
 
-    // Choose color
-    uint16_t color = selected ? selected_color : COLOR_RADAR_BLIP;
-
-    // Aircraft silhouette pattern (11 tall, 9 wide), pointing in +y direction.
-    // Pointed nose (3 rows), tapering body, full-width wing at y=-1, narrow tail.
-    // Each entry is (dx, dy) where dx = right offset, dy = forward offset.
-    // No velocity data -> point North (0°).
-    float h = (velocity_valid ? heading : 0.0f) - rotation_deg;
-    float rad = (h - 90.0f) * M_PI / 180.0f;
-    float sin_h = sin(rad);
-    float cos_h = cos(rad);
-
-    // right perpendicular = (-sin_h, cos_h); forward = (cos_h, sin_h)
-    static const int pattern[][2] = {
-        { 0,  5},                                              // nose tip
-        { 0,  4},                                              // nose
-        { 0,  3},                                              // nose
-        {-1,  2}, { 0,  2}, { 1,  2},                          // fuselage
-        {-2,  1}, {-1,  1}, { 0,  1}, { 1,  1}, { 2,  1},     // fuselage
-        {-3,  0}, {-2,  0}, {-1,  0}, { 0,  0},                // wing leading edge
-        { 1,  0}, { 2,  0}, { 3,  0},                          // wing leading edge
-        {-4, -1}, {-3, -1}, {-2, -1}, {-1, -1}, { 0, -1},      // wing full span
-        { 1, -1}, { 2, -1}, { 3, -1}, { 4, -1},                // wing full span
-        { 0, -2},                                              // fuselage
-        { 0, -3},                                              // fuselage
-        {-2, -4}, {-1, -4}, { 0, -4}, { 1, -4}, { 2, -4},      // tail
-        { 0, -5},                                              // tail tip
-    };
-    constexpr int pattern_count = sizeof(pattern) / sizeof(pattern[0]);
-
-    for (int i = 0; i < pattern_count; i++) {
-        int dx = pattern[i][0];
-        int dy = pattern[i][1];
-        int sx = blip_x + (int)(dx * (-sin_h) + dy * cos_h);
-        int sy = blip_y + (int)(dx * cos_h + dy * sin_h);
-        fb_.drawPixel(sx, sy, color);
-    }
+    const uint16_t color = selected ? selected_color : COLOR_RADAR_BLIP;
+    const float h = (velocity_valid ? heading : 0.0f) - rotation_deg;
+    AircraftGlyph::draw(fb_, blip_x, blip_y, color, h, 1.0f);
 
     // Soft halo around the selected aircraft so it reads on the rings.
     if (selected) {

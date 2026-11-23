@@ -49,6 +49,8 @@ ADSBPage::ADSBPage(Framebuffer& fb, SDRController& sdr, ADSBUIRenderer& ui, Rada
       last_sweep_sector_(-1),
       radar_scope_range_(50.0f),
       radar_scope_range_index_(3),  // 50 km
+      profile_range_(150.0f),
+      profile_range_index_(6),  // 150 km — matches the profile mock scale
       imu_enabled_(true),
       heading_up_(true),
       radar_rotation_(0.0f),
@@ -254,6 +256,8 @@ void ADSBPage::update(float delta_time) {
     updateAircraftList();
     if (view_mode_ == VIEW_RADAR_SCOPE) {
         ensureRadarScopeSelection();
+    } else if (view_mode_ == VIEW_VERTICAL_PROFILE) {
+        ensureProfileSelection();
     }
 
     // Render current view
@@ -333,6 +337,121 @@ void ADSBPage::openRadarScopeView() {
         std::cout << "ADSBPage: Observer position not set, opening settings"
                   << std::endl;
     }
+}
+
+void ADSBPage::openVerticalProfileView() {
+    if (observer_position_set_) {
+        view_mode_ = VIEW_VERTICAL_PROFILE;
+        // Prefer 150 km when traffic spans that far; otherwise snap to envelope.
+        const float auto_range = calculateMaxRange();
+        int best = 6;  // 150 km default
+        if (auto_range > 0.0f) {
+            float best_dist = std::fabs(kRadarScopeRanges[best] - auto_range);
+            for (int i = 0; i < kNumRadarScopeRanges; ++i) {
+                const float d = std::fabs(kRadarScopeRanges[i] - auto_range);
+                if (d < best_dist) {
+                    best_dist = d;
+                    best = i;
+                }
+            }
+        }
+        profile_range_index_ = best;
+        profile_range_ = kRadarScopeRanges[best];
+        ensureProfileSelection();
+        std::cout << "ADSBPage: Switching to vertical profile ("
+                  << profile_range_ << " km)" << std::endl;
+    } else {
+        settings_return_view_ = VIEW_VERTICAL_PROFILE;
+        view_mode_ = VIEW_SETTINGS;
+        settings_selected_item_ = 0;
+        lat_input_.clear();
+        lon_input_.clear();
+        std::cout << "ADSBPage: Observer position not set, opening settings"
+                  << std::endl;
+    }
+}
+
+void ADSBPage::collectProfileVisibleIndices(std::vector<int>& out) const {
+    out.clear();
+    for (size_t i = 0; i < aircraft_list_.size(); ++i) {
+        const auto& ac = aircraft_list_[i];
+        if (!ac.position_valid || ac.distance <= 0.0f) continue;
+        if (ac.distance > profile_range_) continue;
+        out.push_back(static_cast<int>(i));
+    }
+}
+
+void ADSBPage::ensureProfileSelection() {
+    std::vector<int> visible;
+    collectProfileVisibleIndices(visible);
+    if (visible.empty()) {
+        selected_index_ = -1;
+        selected_icao_ = 0;
+        return;
+    }
+    for (int idx : visible) {
+        if (idx == selected_index_) {
+            selected_icao_ = aircraft_list_[idx].icao_addr;
+            return;
+        }
+    }
+    if (selected_icao_ != 0) {
+        for (int idx : visible) {
+            if (aircraft_list_[idx].icao_addr == selected_icao_) {
+                selected_index_ = idx;
+                return;
+            }
+        }
+    }
+    selected_index_ = visible.front();
+    selected_icao_ = aircraft_list_[selected_index_].icao_addr;
+}
+
+void ADSBPage::cycleProfileSelection(int direction) {
+    std::vector<int> visible;
+    collectProfileVisibleIndices(visible);
+    if (visible.empty()) {
+        selected_index_ = -1;
+        selected_icao_ = 0;
+        return;
+    }
+
+    // Sort by altitude so Up/Dn feels like climbing the profile.
+    std::sort(visible.begin(), visible.end(), [this](int a, int b) {
+        return aircraft_list_[a].altitude < aircraft_list_[b].altitude;
+    });
+
+    int pos = -1;
+    for (size_t i = 0; i < visible.size(); ++i) {
+        if (visible[i] == selected_index_) {
+            pos = static_cast<int>(i);
+            break;
+        }
+    }
+    if (pos < 0) {
+        selected_index_ = visible.front();
+    } else {
+        const int n = static_cast<int>(visible.size());
+        pos = (pos + direction) % n;
+        if (pos < 0) pos += n;
+        selected_index_ = visible[pos];
+    }
+    selected_icao_ = aircraft_list_[selected_index_].icao_addr;
+    beeps_.play(1000.0f, 15, 0.06f);
+}
+
+void ADSBPage::zoomProfile(int direction) {
+    int next = profile_range_index_ + direction;
+    if (next < 0 || next >= kNumRadarScopeRanges) {
+        beeps_.play(220.0f, 40, 0.08f);
+        return;
+    }
+    profile_range_index_ = next;
+    profile_range_ = kRadarScopeRanges[profile_range_index_];
+    ensureProfileSelection();
+    beeps_.play(direction < 0 ? 1320.0f : 880.0f, 20, 0.06f);
+    std::cout << "ADSBPage: Profile range " << profile_range_ << " km"
+              << std::endl;
 }
 
 void ADSBPage::collectRadarVisibleIndices(std::vector<int>& out) const {
@@ -434,6 +553,8 @@ bool ADSBPage::handleInput(AppKeyCode key) {
         handleRadarInput(key);
     } else if (view_mode_ == VIEW_RADAR_SCOPE) {
         handleRadarScopeInput(key);
+    } else if (view_mode_ == VIEW_VERTICAL_PROFILE) {
+        handleVerticalProfileInput(key);
     } else if (view_mode_ == VIEW_SETTINGS) {
         handleSettingsInput(key);
     }
@@ -792,6 +913,10 @@ void ADSBPage::renderCurrentView() {
         radar_ui_.renderRadarScope(aircraft_list_, sweep_angle_,
                                    radar_scope_range_, selected_index_,
                                    radar_rotation_);
+
+    } else if (view_mode_ == VIEW_VERTICAL_PROFILE) {
+        ui_.renderVerticalProfile(aircraft_list_, selected_index_,
+                                  profile_range_);
 
     } else if (view_mode_ == VIEW_SETTINGS) {
         // Render settings menu
@@ -1309,6 +1434,69 @@ void ADSBPage::handleRadarInput(AppKeyCode key) {
     }
 }
 
+void ADSBPage::handleVerticalProfileInput(AppKeyCode key) {
+    switch (key) {
+        case APPKEY_UP:
+            cycleProfileSelection(1);  // higher altitude
+            break;
+
+        case APPKEY_DOWN:
+            cycleProfileSelection(-1);
+            break;
+
+        case APPKEY_LEFT:
+        case APPKEY_ZOOM:
+            zoomProfile(-1);
+            break;
+
+        case APPKEY_RIGHT:
+            zoomProfile(1);
+            break;
+
+        case APPKEY_ENTER:
+            // Cycle: profile -> list.
+            view_mode_ = VIEW_LIST;
+            if (selected_index_ < 0) selected_index_ = 0;
+            std::cout << "ADSBPage: Returning to list view from vertical profile"
+                      << std::endl;
+            break;
+
+        case APPKEY_R:
+            openRadarView();
+            break;
+
+        case APPKEY_M:
+            // Match the profile chrome ("M Menu"): open the H overlay.
+            help_visible_ = true;
+            help_tab_ = 0;
+            help_setting_index_ = 0;
+            break;
+
+        case APPKEY_L:
+            settings_return_view_ = VIEW_VERTICAL_PROFILE;
+            view_mode_ = VIEW_SETTINGS;
+            settings_selected_item_ = 0;
+            lat_input_.clear();
+            lon_input_.clear();
+            std::cout << "ADSBPage: Opening settings menu from vertical profile"
+                      << std::endl;
+            break;
+
+        case APPKEY_SCREENSHOT: {
+            const std::string path = makeScreenshotPath();
+            if (fb_.saveScreenshot(path.c_str())) {
+                std::cout << "Screenshot saved: " << path << std::endl;
+            } else {
+                std::cerr << "Screenshot failed" << std::endl;
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
 void ADSBPage::handleRadarScopeInput(AppKeyCode key) {
     switch (key) {
         case APPKEY_UP:
@@ -1331,11 +1519,8 @@ void ADSBPage::handleRadarScopeInput(AppKeyCode key) {
             break;
 
         case APPKEY_ENTER:
-            // Continue the page cycle: scope -> list.
-            view_mode_ = VIEW_LIST;
-            if (selected_index_ < 0) selected_index_ = 0;
-            std::cout << "ADSBPage: Returning to list view from radar scope"
-                      << std::endl;
+            // Continue the page cycle: scope -> vertical profile.
+            openVerticalProfileView();
             break;
 
         case APPKEY_R:

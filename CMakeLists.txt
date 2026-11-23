@@ -99,6 +99,7 @@ set(SOURCES
     src/ui/sdr_ui_renderer.cpp
     src/ui/adsb_ui_renderer.cpp
     src/ui/radar_ui_renderer.cpp
+    src/ui/aircraft_glyph.cpp
     src/ui/ttf_text.cpp
     src/ui/ui_text.cpp
 

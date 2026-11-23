@@ -74,6 +74,14 @@ public:
                               float gain);
 
     /**
+     * Full-screen altitude-vs-distance chart (vertical profile).
+     * X = range km, Y = altitude (GND .. FL400). Selected craft is amber.
+     */
+    void renderVerticalProfile(const std::vector<AircraftState>& aircraft,
+                               int selected_index,
+                               float max_range_km);
+
+    /**
      * Render text at specified position
      * @param x X coordinate
      * @param y Y coordinate
@@ -135,6 +143,11 @@ private:
      * @param buffer Output buffer (must be at least 6 chars)
      */
     void formatDistance(float distance, char* buffer);
+
+    // Vertical profile helpers
+    void drawDashedHLine(int x, int y, int length, uint16_t color,
+                         int dash = 3, int gap = 3);
+    void drawProfileTrendArrow(int x, int y, int direction, uint16_t color);
 
     // PFD rendering helpers
     void renderPFD(const AircraftState& aircraft, int x, int y, int w, int h);

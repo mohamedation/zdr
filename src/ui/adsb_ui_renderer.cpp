@@ -1,4 +1,5 @@
 #include "ui/adsb_ui_renderer.h"
+#include "ui/aircraft_glyph.h"
 #include "ui/ui_text.h"
 #include "font.h"
 #include <cstdio>
@@ -306,6 +307,282 @@ void ADSBUIRenderer::renderAircraftDetail(const AircraftState& aircraft,
     // Render bottom status bar
     fb_.fillRect(0, STATS_BAR_Y, 320, STATS_BAR_H, COLOR_ADSB_STATUSBAR_BG);
     drawText(2, STATS_BAR_Y + 2, "Enter:Radar  Up/Down:Scroll", COLOR_ADSB_STATUSBAR_TEXT);
+}
+
+void ADSBUIRenderer::drawDashedHLine(int x, int y, int length, uint16_t color,
+                                     int dash, int gap) {
+    if (length <= 0 || dash <= 0) return;
+    int cursor = x;
+    const int end = x + length;
+    while (cursor < end) {
+        const int seg = std::min(dash, end - cursor);
+        drawHLine(cursor, y, seg, color);
+        cursor += seg + gap;
+    }
+}
+
+void ADSBUIRenderer::drawProfileTrendArrow(int x, int y, int direction,
+                                           uint16_t color) {
+    // direction > 0 = climb (up), < 0 = descend (down)
+    if (direction > 0) {
+        fb_.drawPixel(x, y - 3, color);
+        drawHLine(x - 1, y - 2, 3, color);
+        drawHLine(x - 2, y - 1, 5, color);
+        drawVLine(x, y, 4, color);
+    } else if (direction < 0) {
+        drawVLine(x, y - 3, 4, color);
+        drawHLine(x - 2, y + 1, 5, color);
+        drawHLine(x - 1, y + 2, 3, color);
+        fb_.drawPixel(x, y + 3, color);
+    }
+}
+
+void ADSBUIRenderer::renderVerticalProfile(
+    const std::vector<AircraftState>& aircraft, int selected_index,
+    float max_range_km) {
+    constexpr int kW = 320;
+    constexpr int kH = 170;
+    constexpr int kBorder = 1;
+    constexpr int kHeaderY = 2;
+    constexpr int kBottomY = 154;
+    constexpr int kPlotL = 40;   // room for altitude labels
+    constexpr int kPlotR = 316;
+    constexpr int kPlotT = 24;   // clear of title row (no header rule)
+    constexpr int kPlotB = 138;  // axis just above bottom chrome
+    constexpr int kMinIconGapX = 14;  // clear air between compact glyphs
+    // Match radar inner-ring dash (3 on / 3 off).
+    constexpr int kDash = 3;
+    constexpr int kGap = 3;
+
+    if (max_range_km < 10.0f) max_range_km = 10.0f;
+
+    fb_.clear(COLOR_BLACK);
+
+    // Header (no rule under title / track count)
+    uiText().draw(fb_, 6, kHeaderY + 2, "VERTICAL PROFILE", TextStyle::Caption,
+                  COLOR_ADSB_TEXT);
+    char trk[16];
+    snprintf(trk, sizeof(trk), "Trk: %d", static_cast<int>(aircraft.size()));
+    const int trk_w = uiText().width(trk, TextStyle::Caption);
+    uiText().draw(fb_, kW - 8 - trk_w, kHeaderY + 2, trk, TextStyle::Caption,
+                  COLOR_ADSB_TEXT);
+
+    const int plot_w = kPlotR - kPlotL;
+    const int plot_h = kPlotB - kPlotT;
+
+    // Altitude envelope from in-range traffic (same filter as plotted marks).
+    float data_min = 0.0f;
+    float data_max = 0.0f;
+    bool have_alt = false;
+    for (const auto& ac : aircraft) {
+        if (!ac.position_valid || ac.distance <= 0.0f) continue;
+        if (ac.distance > max_range_km) continue;
+        const float alt =
+            (ac.altitude > 0) ? static_cast<float>(ac.altitude) : 0.0f;
+        if (!have_alt) {
+            data_min = data_max = alt;
+            have_alt = true;
+        } else {
+            data_min = std::min(data_min, alt);
+            data_max = std::max(data_max, alt);
+        }
+    }
+
+    // Grid lines only on FL100 steps (FL100, FL200, …). First line is at
+    // least FL100 so low traffic can sit below it without its own line.
+    // Highest line is ceil(max FL / 100) * 100 (e.g. FL410 → FL500).
+    constexpr float kFlStep = 100.0f;
+    constexpr float kMinFirstFl = 100.0f;
+
+    float first_fl = kMinFirstFl;
+    float last_fl = 400.0f;
+    if (have_alt) {
+        const float min_fl = data_min / 100.0f;
+        const float max_fl = data_max / 100.0f;
+        first_fl = std::floor(min_fl / kFlStep) * kFlStep;
+        if (first_fl < kMinFirstFl) first_fl = kMinFirstFl;
+        last_fl = std::ceil(max_fl / kFlStep) * kFlStep;
+        if (last_fl < first_fl) last_fl = first_fl;
+    }
+
+    const float first_ft = first_fl * 100.0f;
+    const float last_ft = last_fl * 100.0f;
+
+    // Linear scale spans the labeled FL band and any traffic outside it.
+    float alt_lo = first_ft;
+    float alt_hi = last_ft;
+    if (have_alt) {
+        if (data_min < first_ft) {
+            alt_lo = std::max(0.0f, data_min - 800.0f);
+        }
+        if (data_max > last_ft) {
+            alt_hi = data_max + 800.0f;
+        } else {
+            alt_hi = last_ft;
+        }
+        // Keep a little headroom above the top grid line when traffic sits on it.
+        if (data_max >= last_ft - 200.0f) {
+            alt_hi = std::max(alt_hi, last_ft + 800.0f);
+        }
+    }
+    if (alt_hi <= alt_lo) alt_hi = alt_lo + 10000.0f;
+
+    auto altToY = [&](float alt_ft) -> int {
+        if (alt_ft < alt_lo) alt_ft = alt_lo;
+        if (alt_ft > alt_hi) alt_ft = alt_hi;
+        const float t = (alt_ft - alt_lo) / (alt_hi - alt_lo);
+        return kPlotB - static_cast<int>(t * plot_h + 0.5f);
+    };
+    auto distToX = [&](float dist_km) -> int {
+        if (dist_km < 0.0f) dist_km = 0.0f;
+        if (dist_km > max_range_km) dist_km = max_range_km;
+        const float t = dist_km / max_range_km;
+        return kPlotL + static_cast<int>(t * plot_w + 0.5f);
+    };
+
+    // Equally spaced FL100 grid (radar-style dashes). No per-craft lines.
+    for (float fl = first_fl; fl <= last_fl + 0.5f; fl += kFlStep) {
+        const float alt_ft = fl * 100.0f;
+        const int y = altToY(alt_ft);
+        drawDashedHLine(kPlotL, y, plot_w, COLOR_RADAR_GRID, kDash, kGap);
+        char label[12];
+        snprintf(label, sizeof(label), "FL%03.0f", fl);
+        const int label_w = uiText().width(label, TextStyle::Caption);
+        uiText().draw(fb_, kPlotL - 4 - label_w, y - 4, label,
+                      TextStyle::Caption, COLOR_ADSB_TEXT);
+    }
+
+    // X axis + distance ticks
+    drawHLine(kPlotL, kPlotB, plot_w, COLOR_ADSB_TEXT);
+    const int tick_count = 3;
+    for (int i = 0; i <= tick_count; ++i) {
+        const float dist = max_range_km * (static_cast<float>(i) / tick_count);
+        const int x = distToX(dist);
+        drawVLine(x, kPlotB, 3, COLOR_ADSB_TEXT);
+
+        char label[12];
+        if (i == tick_count) {
+            snprintf(label, sizeof(label), "%.0f km", max_range_km);
+        } else {
+            snprintf(label, sizeof(label), "%.0f", dist);
+        }
+        const int lw = uiText().width(label, TextStyle::Caption);
+        int lx = x - lw / 2;
+        if (lx < kPlotL) lx = kPlotL;
+        if (lx + lw > kPlotR) lx = kPlotR - lw;
+        uiText().draw(fb_, lx, kPlotB + 4, label, TextStyle::Caption,
+                      COLOR_ADSB_TEXT);
+    }
+
+    struct PlotMark {
+        int idx;
+        int x;
+        int y;
+        int vs_dir;  // -1 / 0 / +1
+        bool selected;
+    };
+    std::vector<PlotMark> marks;
+    marks.reserve(aircraft.size());
+
+    for (size_t i = 0; i < aircraft.size(); ++i) {
+        const AircraftState& ac = aircraft[i];
+        if (!ac.position_valid || ac.distance <= 0.0f) continue;
+        if (ac.distance > max_range_km) continue;
+
+        const float alt =
+            (ac.altitude > 0) ? static_cast<float>(ac.altitude) : 0.0f;
+        int vs_dir = 0;
+        if (ac.velocity_valid && std::abs(ac.vertical_rate) >= 200) {
+            vs_dir = (ac.vertical_rate > 0) ? 1 : -1;
+        }
+        marks.push_back(PlotMark{
+            static_cast<int>(i),
+            distToX(ac.distance),
+            altToY(alt),
+            vs_dir,
+            static_cast<int>(i) == selected_index,
+        });
+    }
+
+    // Keep left-to-right order by true distance, then spread so glyphs don't
+    // stack. When the range is dense, use even slots across the plot width.
+    std::sort(marks.begin(), marks.end(),
+              [](const PlotMark& a, const PlotMark& b) { return a.x < b.x; });
+    const int n = static_cast<int>(marks.size());
+    const int usable = plot_w - 12;
+    if (n >= 2 && n * kMinIconGapX > usable) {
+        for (int i = 0; i < n; ++i) {
+            marks[i].x = kPlotL + 6 + (i * usable) / (n - 1);
+        }
+    } else {
+        for (int pass = 0; pass < 6; ++pass) {
+            for (size_t i = 1; i < marks.size(); ++i) {
+                PlotMark& prev = marks[i - 1];
+                PlotMark& cur = marks[i];
+                const int gap = cur.x - prev.x;
+                if (gap >= kMinIconGapX) continue;
+                const int need = kMinIconGapX - gap;
+                const int push_l = need / 2;
+                const int push_r = need - push_l;
+                prev.x = std::max(kPlotL + 6, prev.x - push_l);
+                cur.x = std::min(kPlotR - 6, cur.x + push_r);
+                if (cur.x - prev.x < kMinIconGapX) {
+                    cur.x = std::min(kPlotR - 6, prev.x + kMinIconGapX);
+                }
+            }
+            std::sort(marks.begin(), marks.end(), [](const PlotMark& a,
+                                                     const PlotMark& b) {
+                return a.x < b.x;
+            });
+        }
+    }
+
+    auto drawMark = [&](const PlotMark& m) {
+        const uint16_t color =
+            m.selected ? COLOR_ADSB_SELECTED : COLOR_ADSB_TEXT;
+        // Same silhouette as radar, scaled down for the dense profile plot.
+        AircraftGlyph::draw(fb_, m.x, m.y, color, /*heading_deg=*/0.0f,
+                            /*scale=*/0.65f);
+        if (m.vs_dir != 0) {
+            drawProfileTrendArrow(m.x + 8, m.y, m.vs_dir, color);
+        }
+    };
+
+    for (const auto& m : marks) {
+        if (!m.selected) drawMark(m);
+    }
+    for (const auto& m : marks) {
+        if (m.selected) drawMark(m);
+    }
+
+    // Bottom chrome — callsign only (no "Sel:" prefix).
+    fb_.fillRect(kBorder, kBottomY, kW - 2 * kBorder, kH - kBottomY - kBorder,
+                 COLOR_BLACK);
+    drawHLine(kBorder + 2, kBottomY, kW - 2 * kBorder - 4, COLOR_RADAR_GRID);
+
+    char sel[16];
+    sel[0] = '\0';
+    if (selected_index >= 0 &&
+        selected_index < static_cast<int>(aircraft.size())) {
+        const AircraftState& ac = aircraft[selected_index];
+        int n = 0;
+        for (; n < 8 && ac.callsign[n] && ac.callsign[n] != ' '; ++n) {
+            sel[n] = ac.callsign[n];
+        }
+        sel[n] = '\0';
+        if (n == 0) {
+            snprintf(sel, sizeof(sel), "%06X", ac.icao_addr);
+        }
+    } else {
+        snprintf(sel, sizeof(sel), "---");
+    }
+    uiText().draw(fb_, 6, kBottomY + 3, sel, TextStyle::Caption,
+                  COLOR_ADSB_SELECTED);
+
+    const char* hints = "Up/Dn Change  M Menu";
+    const int hints_w = uiText().width(hints, TextStyle::Caption);
+    uiText().draw(fb_, kW - 8 - hints_w, kBottomY + 3, hints,
+                  TextStyle::Caption, COLOR_ADSB_TEXT);
 }
 
 void ADSBUIRenderer::formatTimeSince(time_t seconds, char* buffer) {
@@ -780,10 +1057,11 @@ void ADSBUIRenderer::renderKeyHelp() {
         {"TAB",        "PAGE MENU"},
         {"UP/DOWN",    "SELECT AIRCRAFT"},
         {"LEFT/RIGHT", "PAGE / ZOOM SCOPE"},
-        {"ENTER",      "LIST>DET>RADAR>SCOPE"},
+        {"ENTER",      "LIST>DET>RADAR>SCOPE>PROF"},
         {"R",          "RADAR / SCOPE->RADAR"},
         {"I / 0",      "COMPASS UP / NORTH"},
         {"L",          "POSITION SETTINGS"},
+        {"M",          "PROFILE HELP MENU"},
         {"H",          "HELP / SETTINGS"},
         {"G",          "GAIN MODE (RADAR)"},
         {"+ / -",      "GAIN (RADAR)"},
