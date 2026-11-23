@@ -23,20 +23,18 @@ void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircr
                                          int scroll_offset,
                                          bool blink_state,
                                          float heading_deg) {
-    // Clear entire display area with dark background
-    fb_.fillRect(0, RADAR_Y, 320, RADAR_H, COLOR_RADAR_BG);
-
-    // Draw vertical separator line between list and radar
-    for (int y = RADAR_Y; y < RADAR_Y + RADAR_H; y++) {
-        fb_.drawPixel(LIST_W, y, COLOR_RADAR_GRID);
-    }
-
-    // Render aircraft list in left panel
-    renderAircraftList(aircraft, selected_index, scroll_offset);
-
+    (void)observer_lat;
+    (void)observer_lon;
     (void)sweep_angle;  // Cosmetic beam removed; arg kept for API stability.
 
-    // Render radar display in right panel
+    // Flat black content area (same canvas as profile / radar-only).
+    fb_.fillRect(0, RADAR_Y, 320, RADAR_H, COLOR_BLACK);
+
+    // Vertical separator between list and radar
+    drawVLine(LIST_W, RADAR_Y, RADAR_H, COLOR_RADAR_GRID);
+
+    renderAircraftList(aircraft, selected_index, scroll_offset);
+
     drawRangeRings(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
                    NUM_RANGE_RINGS, max_range, heading_deg);
     drawCompassMarkings(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
@@ -44,67 +42,60 @@ void RadarUIRenderer::renderRadarDisplay(const std::vector<AircraftState>& aircr
     drawRingLabels(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
                    NUM_RANGE_RINGS, max_range);
 
-    // Draw aircraft blips
     for (size_t i = 0; i < aircraft.size(); i++) {
         const auto& ac = aircraft[i];
         if (ac.position_valid && ac.distance > 0) {
-            bool is_selected = (i == (size_t)selected_index);
-
-            // If selected and blink_state is false, skip drawing (creates blink effect)
+            const bool is_selected = (i == (size_t)selected_index);
             if (is_selected && !blink_state) {
                 continue;
             }
             drawAircraftBlip(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_RADIUS,
-                           ac.distance, ac.bearing,
-                           ac.heading, ac.velocity_valid,
-                           max_range, is_selected, heading_deg,
-                           COLOR_RADAR_SELECTED);
+                             ac.distance, ac.bearing, ac.heading,
+                             ac.velocity_valid, max_range, is_selected,
+                             heading_deg, COLOR_RADAR_SELECTED);
         }
     }
 
-    // Selected callsign, 2x size, at the bottom of the left panel.
+    // Full-width bottom chrome — Caption callsign + nav (profile style).
+    drawHLine(2, BOTTOM_Y, 316, COLOR_RADAR_GRID);
+
     char callsign[9] = {0};
+    char info[24] = {0};
     if (selected_index >= 0 && selected_index < (int)aircraft.size()) {
         const auto& ac = aircraft[selected_index];
-        snprintf(callsign, sizeof(callsign), "%s", ac.callsign);
-        for (int k = (int)strlen(callsign) - 1; k >= 0 && callsign[k] == ' '; --k) {
-            callsign[k] = '\0';
+        int n = 0;
+        for (; n < 8 && ac.callsign[n] && ac.callsign[n] != ' '; ++n) {
+            callsign[n] = ac.callsign[n];
         }
-        if (callsign[0] == '\0') {
+        callsign[n] = '\0';
+        if (n == 0) {
             snprintf(callsign, sizeof(callsign), "%06X", ac.icao_addr);
         }
+        if (ac.distance > 0.0f) {
+            if (ac.altitude > 0) {
+                snprintf(info, sizeof(info), "%.0fkm %dft", ac.distance,
+                         ac.altitude);
+            } else {
+                snprintf(info, sizeof(info), "%.0fkm", ac.distance);
+            }
+        }
     } else {
-        snprintf(callsign, sizeof(callsign), "-----");
-    }
-
-    // Full-width plate at the bottom of the sidebar (kept dim so it does
-    // not glare on the small panel).
-    fb_.fillRect(0, CALLSIGN_BOX_Y, LIST_W, 170 - CALLSIGN_BOX_Y,
-                 COLOR_RADAR_BG);
-    for (int x = 0; x < LIST_W; ++x) {
-        fb_.drawPixel(x, CALLSIGN_BOX_Y, COLOR_RADAR_GRID);
-    }
-    if (!callsign_font_loaded_) {
-        callsign_font_loaded_ = true;
-        loadDefaultUiFont(callsign_font_, 19);
+        snprintf(callsign, sizeof(callsign), "---");
     }
 
     const uint16_t callsign_color =
         (selected_index >= 0) ? COLOR_RADAR_SELECTED : COLOR_RADAR_TEXT;
-    if (callsign_font_.valid()) {
-        const int width = callsign_font_.textWidth(callsign);
-        int x = (LIST_W - width) / 2;
-        if (x < 2) x = 2;
-        // Tight padding: baseline 17 px below the plate top.
-        callsign_font_.draw(fb_, x, CALLSIGN_BOX_Y + 17, callsign,
-                            callsign_color);
-    } else {
-        const int scale = 2;
-        int width = (int)strlen(callsign) * 7 * scale;
-        int x = (LIST_W - width) / 2;
-        if (x < 2) x = 2;
-        drawScaledText(x, CALLSIGN_BOX_Y + 4, callsign, callsign_color, scale);
+    uiText().draw(fb_, 6, BOTTOM_Y + 3, callsign, TextStyle::Caption,
+                  callsign_color);
+    if (info[0] != '\0') {
+        const int call_w = uiText().width(callsign, TextStyle::Caption);
+        uiText().draw(fb_, 6 + call_w + 8, BOTTOM_Y + 3, info,
+                      TextStyle::Caption, COLOR_RADAR_TEXT);
     }
+    const char* hints = "Up/Dn Change  M Menu";
+    const int hints_w = uiText().width(hints, TextStyle::Caption);
+    uiText().draw(fb_, 320 - 8 - hints_w, BOTTOM_Y + 3, hints,
+                  TextStyle::Caption, COLOR_RADAR_TEXT);
 }
 
 void RadarUIRenderer::renderRadarScope(const std::vector<AircraftState>& aircraft,
@@ -211,85 +202,58 @@ void RadarUIRenderer::renderScopeStatusBar(int in_view_count, int total_count,
 void RadarUIRenderer::renderStatusBar(int aircraft_count, float max_range,
                                       bool heading_valid, float heading_deg,
                                       bool heading_up) {
-    // Clear status bar with dark background
-    fb_.fillRect(0, STATUS_BAR_Y, 320, STATUS_BAR_H, COLOR_BG_DARK);
+    // Caption chrome on the shared black canvas — no bar fill.
+    char title[32];
+    snprintf(title, sizeof(title), "RADAR  %.0fkm", max_range);
+    uiText().draw(fb_, 6, HEADER_Y + 2, title, TextStyle::Caption,
+                  COLOR_RADAR_TEXT);
 
-    // Format status "Traffic: 5  Range: 50km"
-    char status[64];
-    snprintf(status, sizeof(status), "Traffic:%d Range:%.0fkm",
-             aircraft_count, max_range);
-
-    // Draw status text (left-aligned)
-    if (!ui_font_loaded_) {
-        ui_font_loaded_ = true;
-        loadDefaultUiFont(ui_font_, 12);
-    }
-    if (ui_font_.valid()) {
-        ui_font_.draw(fb_, 5, STATUS_BAR_Y + 12, status, COLOR_RADAR_TEXT);
-    } else {
-        drawText(5, STATUS_BAR_Y + 2, status, COLOR_RADAR_TEXT);
-    }
-
-    // Compass heading, right-aligned. Bright when the scope is heading-up,
-    // dim while it is north-up (the IMU keeps tracking either way).
+    char trk[28];
     if (heading_valid) {
-        char heading[24];
-        snprintf(heading, sizeof(heading), "HDG %03.0f",
+        snprintf(trk, sizeof(trk), "Trk:%d  HDG%03.0f", aircraft_count,
                  heading_deg < 0.0f ? heading_deg + 360.0f : heading_deg);
-        const uint16_t color = heading_up ? COLOR_RADAR_SELECTED
-                                          : COLOR_RADAR_GRID;
-        if (ui_font_.valid()) {
-            const int width = ui_font_.textWidth(heading);
-            ui_font_.draw(fb_, 315 - width, STATUS_BAR_Y + 12,
-                          heading, color);
-        } else {
-            const int width = (int)strlen(heading) * 7;
-            drawText(315 - width, STATUS_BAR_Y + 2, heading, color);
-        }
+    } else {
+        snprintf(trk, sizeof(trk), "Trk: %d", aircraft_count);
     }
+    const int trk_w = uiText().width(trk, TextStyle::Caption);
+    const uint16_t trk_color =
+        (heading_valid && heading_up) ? COLOR_RADAR_SELECTED : COLOR_RADAR_TEXT;
+    uiText().draw(fb_, 320 - 8 - trk_w, HEADER_Y + 2, trk, TextStyle::Caption,
+                  trk_color);
 }
 
 void RadarUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircraft,
                                          int selected_index,
                                          int scroll_offset) {
-    // Draw list background
-    fb_.fillRect(LIST_X, LIST_Y, LIST_W, LIST_H, COLOR_RADAR_BG);
+    // List sits on the shared black canvas (no panel fill).
+    uiText().draw(fb_, LIST_X + 2, LIST_Y + 2, "ICAO", TextStyle::Caption,
+                  COLOR_RADAR_TEXT);
+    uiText().draw(fb_, LIST_X + 52, LIST_Y + 2, "ALT", TextStyle::Caption,
+                  COLOR_RADAR_TEXT);
+    uiText().draw(fb_, LIST_X + 88, LIST_Y + 2, "DIST", TextStyle::Caption,
+                  COLOR_RADAR_TEXT);
+    drawHLine(LIST_X, LIST_Y + ROW_HEIGHT - 1, LIST_W, COLOR_RADAR_GRID);
 
-    // Draw list header
-    drawText(LIST_X + 2, LIST_Y + 2, "ICAO", COLOR_RADAR_TEXT);
-    drawText(LIST_X + 88 - 3 * 7, LIST_Y + 2, "ALT", COLOR_RADAR_TEXT);
-    drawText(LIST_X + 122 - 4 * 7, LIST_Y + 2, "DIST", COLOR_RADAR_TEXT);
+    const int start_idx = scroll_offset;
+    const int end_idx =
+        std::min((int)aircraft.size(), scroll_offset + MAX_VISIBLE_ROWS - 1);
 
-    // Draw horizontal line under header
-    for (int x = LIST_X; x < LIST_X + LIST_W; x++) {
-        fb_.drawPixel(x, LIST_Y + ROW_HEIGHT, COLOR_RADAR_GRID);
-    }
-
-    // Calculate visible range
-    int start_idx = scroll_offset;
-    int end_idx = std::min((int)aircraft.size(), scroll_offset + MAX_VISIBLE_ROWS - 1);
-
-    // Draw aircraft rows
     for (int i = start_idx; i < end_idx; i++) {
         const auto& ac = aircraft[i];
-        int row_y = LIST_Y + ROW_HEIGHT + (i - scroll_offset) * ROW_HEIGHT;
-
-        // Highlight selected row
-        bool is_selected = (i == selected_index);
+        const int row_y = LIST_Y + ROW_HEIGHT + (i - scroll_offset) * ROW_HEIGHT;
+        const bool is_selected = (i == selected_index);
         if (is_selected) {
             fb_.fillRect(LIST_X, row_y, LIST_W, ROW_HEIGHT, COLOR_RADAR_SELECTED);
         }
 
-        uint16_t text_color = is_selected ? COLOR_BLACK : COLOR_RADAR_TEXT;
-
-        // Format and draw aircraft info
+        const uint16_t text_color =
+            is_selected ? COLOR_BLACK : COLOR_RADAR_TEXT;
         char buffer[32];
 
-        // ICAO (6 hex chars); the selected callsign is shown large below.
         snprintf(buffer, sizeof(buffer), "%06X", ac.icao_addr);
-        drawText(LIST_X + 2, row_y + 2, buffer, text_color);
+        uiText().draw(fb_, LIST_X + 2, row_y + 2, buffer, TextStyle::Caption,
+                      text_color);
 
-        // Altitude: 35k / 2.6k (right-aligned, ends at x=76)
         if (ac.position_valid && ac.altitude > 0) {
             if (ac.altitude >= 10000) {
                 snprintf(buffer, sizeof(buffer), "%dk", ac.altitude / 1000);
@@ -299,9 +263,10 @@ void RadarUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircr
         } else {
             snprintf(buffer, sizeof(buffer), "-");
         }
-        drawText(LIST_X + 88 - (int)strlen(buffer) * 7, row_y + 2, buffer, text_color);
+        const int alt_w = uiText().width(buffer, TextStyle::Caption);
+        uiText().draw(fb_, LIST_X + 82 - alt_w, row_y + 2, buffer,
+                      TextStyle::Caption, text_color);
 
-        // Distance from the observer in km (right-aligned, ends at x=114)
         if (ac.distance > 0) {
             if (ac.distance < 10.0f) {
                 snprintf(buffer, sizeof(buffer), "%.1fk", ac.distance);
@@ -311,7 +276,9 @@ void RadarUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircr
         } else {
             snprintf(buffer, sizeof(buffer), "-");
         }
-        drawText(LIST_X + 122 - (int)strlen(buffer) * 7, row_y + 2, buffer, text_color);
+        const int dist_w = uiText().width(buffer, TextStyle::Caption);
+        uiText().draw(fb_, LIST_X + 122 - dist_w, row_y + 2, buffer,
+                      TextStyle::Caption, text_color);
     }
 
     // Draw scroll indicator if needed

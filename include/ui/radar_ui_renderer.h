@@ -95,28 +95,28 @@ public:
     void renderText(int x, int y, const char* text, uint16_t color, bool bold = false);
 
 private:
-    // Layout constants (320x170 display) - Left-right split layout
-    static const int STATUS_BAR_Y = 0;
-    static const int STATUS_BAR_H = 16;
+    // Layout constants (320x170) — chrome matches profile / radar-only scope
+    static const int HEADER_Y = 2;
+    static const int BOTTOM_Y = 154;
+    static const int BOTTOM_H = 16;
 
     // Left panel - Aircraft list
     static const int LIST_X = 0;
-    static const int LIST_Y = 16;
-    static const int LIST_W = 126;  // Left 118 pixels for list
-    static const int LIST_H = 154;  // 170 - 16 = 154
+    static const int LIST_Y = 22;
+    static const int LIST_W = 126;
+    static const int LIST_H = 132;           // 22 .. 154
     static const int ROW_HEIGHT = 14;
-    static const int MAX_VISIBLE_ROWS = 9;   // header + 8 rows (callsign box below)
+    static const int MAX_VISIBLE_ROWS = 9;   // header + 8 rows
 
     // Right panel - Radar display
     static const int RADAR_X = 126;
-    static const int RADAR_Y = 16;
-    static const int RADAR_W = 194;  // Right 194 pixels for radar
-    static const int RADAR_H = 154;
-    static const int RADAR_CENTER_X = 223;  // 126 + 194/2 = 223
-    static const int RADAR_CENTER_Y = 85;   // fills the screen height
-    static const int RADAR_RADIUS = 75;     // N/S sit outside the ring
+    static const int RADAR_Y = 22;
+    static const int RADAR_W = 194;
+    static const int RADAR_H = 132;
+    static const int RADAR_CENTER_X = 223;  // 126 + 194/2
+    static const int RADAR_CENTER_Y = 88;
+    static const int RADAR_RADIUS = 58;
     static const int NUM_RANGE_RINGS = 3;
-    static const int CALLSIGN_BOX_Y = 144;
     static const int NUM_TRAIL_LINES = 4;
 
     // Full-screen radar scope — chrome matches vertical profile layout

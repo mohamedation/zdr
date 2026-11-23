@@ -883,8 +883,8 @@ void ADSBPage::renderCurrentView() {
         // Render radar view
         float max_range = calculateMaxRange();
 
-        // Clear screen
-        fb_.clear(COLOR_RADAR_BG);
+        // Flat black canvas like profile / radar-only (no tinted chrome).
+        fb_.clear(COLOR_BLACK);
 
         // Render status bar
         const bool compass_active = imu_enabled_ && imu_.hasHeading();
@@ -1344,6 +1344,12 @@ void ADSBPage::handleRadarInput(AppKeyCode key) {
 
         case APPKEY_R:
             // Stay on split radar / return from elsewhere via R.
+            break;
+
+        case APPKEY_M:
+            help_visible_ = true;
+            help_tab_ = 0;
+            help_setting_index_ = 0;
             break;
 
         case APPKEY_L:
