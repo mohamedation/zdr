@@ -846,17 +846,14 @@ void ADSBPage::calculateDistance(AircraftState& aircraft) {
 
 void ADSBPage::renderCurrentView() {
     if (view_mode_ == VIEW_LIST) {
-        // Render status bar
+        // Flat black canvas like profile / radar (no tinted chrome bars).
+        fb_.clear(COLOR_BLACK);
+
         ui_.renderStatusBar(aircraft_list_.size(), total_messages_,
                            message_rate_);
-
-        // Render column headers
         ui_.renderColumnHeaders();
-
-        // Render aircraft list
         ui_.renderAircraftList(aircraft_list_, selected_index_, scroll_offset_);
 
-        // Render statistics
         float max_range = 0.0f;
         for (const auto& ac : aircraft_list_) {
             if (ac.distance > max_range) max_range = ac.distance;

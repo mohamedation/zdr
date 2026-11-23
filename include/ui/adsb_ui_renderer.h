@@ -102,17 +102,16 @@ public:
     int getTextWidth(const char* text) const override;
 
 private:
-    // Layout constants (320x170)
-    static const int STATUS_BAR_Y = 0;
-    static const int STATUS_BAR_H = 16;
-    static const int HEADER_Y = 16;
-    static const int HEADER_H = 14;
-    static const int LIST_Y = 30;
-    static const int LIST_H = 122;           // 30 to 152
-    static const int STATS_BAR_Y = 152;
-    static const int STATS_BAR_H = 18;
-    static const int ROW_HEIGHT = 14;        // mono line + padding
-    static const int MAX_VISIBLE_ROWS = 8;   // 122 / 14 ≈ 8
+    // Layout constants (320x170) — chrome matches profile / radar
+    static const int HEADER_Y = 2;
+    static const int COL_HEADER_Y = 20;
+    static const int COL_HEADER_H = 14;
+    static const int LIST_Y = 34;
+    static const int LIST_H = 120;           // 34 .. 154
+    static const int STATS_BAR_Y = 154;
+    static const int STATS_BAR_H = 16;
+    static const int ROW_HEIGHT = 14;
+    static const int MAX_VISIBLE_ROWS = 8;   // 120 / 14 ≈ 8
 
     // Column positions (approximate mono advances)
     static const int COL_ICAO_X = 2;

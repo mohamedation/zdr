@@ -11,10 +11,9 @@
 #include <algorithm>
 
 // Define static constants
-const int ADSBUIRenderer::STATUS_BAR_Y;
-const int ADSBUIRenderer::STATUS_BAR_H;
 const int ADSBUIRenderer::HEADER_Y;
-const int ADSBUIRenderer::HEADER_H;
+const int ADSBUIRenderer::COL_HEADER_Y;
+const int ADSBUIRenderer::COL_HEADER_H;
 const int ADSBUIRenderer::LIST_Y;
 const int ADSBUIRenderer::LIST_H;
 const int ADSBUIRenderer::STATS_BAR_Y;
@@ -76,88 +75,70 @@ int ADSBUIRenderer::getTextWidth(const char* text) const {
 void ADSBUIRenderer::renderStatusBar(int aircraft_count,
                                      uint32_t message_count,
                                      float message_rate) {
-    // Clear status bar area with blue background
-    fb_.fillRect(0, STATUS_BAR_Y, 320, STATUS_BAR_H, COLOR_ADSB_STATUSBAR_BG);
+    // Caption chrome on flat black — no bar fill (matches profile / radar).
+    char title[40];
+    snprintf(title, sizeof(title), "ADSB  %.0f/s", message_rate);
+    uiText().draw(fb_, 6, HEADER_Y + 2, title, TextStyle::Caption,
+                  COLOR_ADSB_TEXT);
 
-    // Format status string: "AC:5 Msg:1234 45/s 1090MHz"
-    char status[64];
-    snprintf(status, sizeof(status), "AC:%d Msg:%u %.0f/s 1090MHz",
-             aircraft_count, message_count, message_rate);
-
-    uiText().draw(fb_, 2, STATUS_BAR_Y + 2, status, TextStyle::Body,
-                  COLOR_ADSB_STATUSBAR_TEXT);
+    char trk[32];
+    snprintf(trk, sizeof(trk), "Trk:%d  Msg:%u", aircraft_count, message_count);
+    const int trk_w = uiText().width(trk, TextStyle::Caption);
+    uiText().draw(fb_, 320 - 8 - trk_w, HEADER_Y + 2, trk, TextStyle::Caption,
+                  COLOR_ADSB_TEXT);
 }
 
 void ADSBUIRenderer::renderColumnHeaders() {
-    // Clear header area
-    fb_.fillRect(0, HEADER_Y, 320, HEADER_H, COLOR_BG_DARK);
+    // Column labels on the shared canvas (no panel fill).
+    drawHLine(2, COL_HEADER_Y + COL_HEADER_H - 1, 316, COLOR_RADAR_GRID);
 
-    // Draw separator line
-    drawHLine(0, HEADER_Y + HEADER_H - 1, 320, COLOR_GRID);
-
-    // Draw column headers
-    drawText(COL_ICAO_X, HEADER_Y + 1, "ICAO", COLOR_ADSB_TEXT);
-    drawText(COL_CALL_X, HEADER_Y + 1, "Call", COLOR_ADSB_TEXT);
-    drawText(COL_ALT_X, HEADER_Y + 1, "Alt", COLOR_ADSB_TEXT);
-    drawText(COL_SPD_X, HEADER_Y + 1, "Spd", COLOR_ADSB_TEXT);
-    drawText(COL_HDG_X, HEADER_Y + 1, "Hdg", COLOR_ADSB_TEXT);
-    drawText(COL_DIST_X, HEADER_Y + 1, "Dist", COLOR_ADSB_TEXT);
-    drawText(COL_SEEN_X, HEADER_Y + 1, "Seen", COLOR_ADSB_TEXT);
+    drawText(COL_ICAO_X, COL_HEADER_Y + 1, "ICAO", COLOR_ADSB_TEXT);
+    drawText(COL_CALL_X, COL_HEADER_Y + 1, "Call", COLOR_ADSB_TEXT);
+    drawText(COL_ALT_X, COL_HEADER_Y + 1, "Alt", COLOR_ADSB_TEXT);
+    drawText(COL_SPD_X, COL_HEADER_Y + 1, "Spd", COLOR_ADSB_TEXT);
+    drawText(COL_HDG_X, COL_HEADER_Y + 1, "Hdg", COLOR_ADSB_TEXT);
+    drawText(COL_DIST_X, COL_HEADER_Y + 1, "Dist", COLOR_ADSB_TEXT);
+    drawText(COL_SEEN_X, COL_HEADER_Y + 1, "Seen", COLOR_ADSB_TEXT);
 }
 
 void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircraft,
                                         int selected_index,
                                         int scroll_offset) {
-    // Clear list area
-    fb_.fillRect(0, LIST_Y, 320, LIST_H, COLOR_BG_DARK);
-
-    // Calculate visible range
-    int visible_count = std::min((int)aircraft.size() - scroll_offset, MAX_VISIBLE_ROWS);
+    const int visible_count =
+        std::min((int)aircraft.size() - scroll_offset, MAX_VISIBLE_ROWS);
 
     for (int i = 0; i < visible_count; i++) {
-        int aircraft_idx = scroll_offset + i;
+        const int aircraft_idx = scroll_offset + i;
         if (aircraft_idx >= (int)aircraft.size()) break;
 
         const AircraftState& ac = aircraft[aircraft_idx];
-        int row_y = LIST_Y + (i * ROW_HEIGHT);
-        bool is_selected = (aircraft_idx == selected_index);
+        const int row_y = LIST_Y + (i * ROW_HEIGHT);
+        const bool is_selected = (aircraft_idx == selected_index);
 
-        // Highlight selected row
+        // Only the selected row is highlighted (full width).
         if (is_selected) {
             fb_.fillRect(0, row_y, 320, ROW_HEIGHT, COLOR_ADSB_SELECTED);
         }
 
-        uint16_t text_color = is_selected ? COLOR_BLACK : COLOR_ADSB_TEXT;
-
-        // Format and draw each column
+        const uint16_t text_color =
+            is_selected ? COLOR_BLACK : COLOR_ADSB_TEXT;
         char buffer[16];
-
         const int text_y = row_y + 2;
 
-        // ICAO address (6 hex digits)
         snprintf(buffer, sizeof(buffer), "%06X", ac.icao_addr);
         drawText(COL_ICAO_X, text_y, buffer, text_color);
 
-        // Callsign with amber chip when not the selected row
+        // Callsign — plain text; no amber chip unless the row is selected.
         if (ac.callsign[0] != '\0') {
             int callsign_len = strlen(ac.callsign);
             while (callsign_len > 0 && ac.callsign[callsign_len - 1] == ' ') {
                 callsign_len--;
             }
-
             if (callsign_len > 0) {
                 char callsign_buf[9];
-                snprintf(callsign_buf, sizeof(callsign_buf), "%.*s", callsign_len,
-                         ac.callsign);
-                if (!is_selected) {
-                    const int chip_w = uiText().width(callsign_buf, TextStyle::Mono);
-                    const int chip_h = uiText().lineHeight(TextStyle::Mono);
-                    fb_.fillRect(COL_CALL_X, text_y, chip_w, chip_h,
-                                 COLOR_ADSB_SELECTED);
-                    drawText(COL_CALL_X, text_y, callsign_buf, COLOR_BLACK);
-                } else {
-                    drawText(COL_CALL_X, text_y, callsign_buf, COLOR_BLACK);
-                }
+                snprintf(callsign_buf, sizeof(callsign_buf), "%.*s",
+                         callsign_len, ac.callsign);
+                drawText(COL_CALL_X, text_y, callsign_buf, text_color);
             } else {
                 snprintf(buffer, sizeof(buffer), "-------");
                 drawText(COL_CALL_X, text_y, buffer, text_color);
@@ -167,7 +148,6 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
             drawText(COL_CALL_X, text_y, buffer, text_color);
         }
 
-        // Altitude (5 chars, right-aligned)
         if (ac.position_valid && ac.altitude > 0) {
             snprintf(buffer, sizeof(buffer), "%5d", ac.altitude);
         } else {
@@ -175,7 +155,6 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
         }
         drawText(COL_ALT_X, text_y, buffer, text_color);
 
-        // Speed (3 chars, right-aligned)
         if (ac.velocity_valid && ac.speed > 0) {
             snprintf(buffer, sizeof(buffer), "%3d", ac.speed);
         } else {
@@ -183,7 +162,6 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
         }
         drawText(COL_SPD_X, text_y, buffer, text_color);
 
-        // Heading (3 chars, right-aligned)
         if (ac.velocity_valid && ac.heading >= 0) {
             snprintf(buffer, sizeof(buffer), "%03d", ac.heading);
         } else {
@@ -191,34 +169,27 @@ void ADSBUIRenderer::renderAircraftList(const std::vector<AircraftState>& aircra
         }
         drawText(COL_HDG_X, text_y, buffer, text_color);
 
-        // Distance (5 chars with unit)
         formatDistance(ac.distance, buffer);
         drawText(COL_DIST_X, text_y, buffer, text_color);
 
-        // Time since last seen (4 chars)
         time_t now = time(nullptr);
         time_t elapsed = now - ac.last_seen;
         formatTimeSince(elapsed, buffer);
         drawText(COL_SEEN_X, text_y, buffer, text_color);
     }
-
-    // Draw separator line at bottom of list
-    drawHLine(0, LIST_Y + LIST_H - 1, 320, COLOR_GRID);
 }
 
 void ADSBUIRenderer::renderStatistics(uint32_t total_messages,
                                       uint32_t crc_errors,
                                       float max_range) {
-    // Clear statistics area with blue background
-    fb_.fillRect(0, STATS_BAR_Y, 320, STATS_BAR_H, COLOR_ADSB_STATUSBAR_BG);
+    // Bottom chrome — Caption on flat canvas (profile style).
+    drawHLine(2, STATS_BAR_Y, 316, COLOR_RADAR_GRID);
 
-    // Format statistics string: "Total:1234 CRC:12 Range:50km"
     char stats[64];
-    snprintf(stats, sizeof(stats), "Total:%u CRC:%u Range:%.0fkm",
+    snprintf(stats, sizeof(stats), "Total:%u  CRC:%u  Range:%.0fkm",
              total_messages, crc_errors, max_range);
-
-    uiText().draw(fb_, 2, STATS_BAR_Y + 2, stats, TextStyle::Body,
-                  COLOR_ADSB_STATUSBAR_TEXT);
+    uiText().draw(fb_, 6, STATS_BAR_Y + 3, stats, TextStyle::Caption,
+                  COLOR_ADSB_TEXT);
 }
 
 void ADSBUIRenderer::renderAircraftDetail(const AircraftState& aircraft,
